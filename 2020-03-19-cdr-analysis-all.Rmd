@@ -1,0 +1,1081 @@
+---
+title: "2020-03-19-cdr-analysis-all"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# CdrS is required for cell division site placement but not elongation in hypersaline-adapted archaea. 
+
+## This file contains all the code needed to recapitulate the figures for the manuscript. 
+Input files are provided in the repository https://github.com/amyschmid/cdr/ 
+
+### Install and load the packages to set up the coding environment
+```{r}
+# this is the function we will use to check for installed packages and load them. 
+using<-function(...) {
+    libs<-unlist(list(...))
+    req<-unlist(lapply(libs,require,character.only=TRUE))
+    need<-libs[req==FALSE]
+    if(length(need)>0){ 
+        install.packages(need)
+        lapply(need,require,character.only=TRUE)
+    }
+}
+
+using ("plyr", 
+       "psychometric",
+       "ggplot2",
+       "tidyr",
+       "dplyr",
+       "tidyverse",
+       "corrplot",
+       "viridisLite",
+       "viridis",
+       "EnvStats",
+       "stats",
+       "patchwork", 
+       "bestNormalize",
+       "sjstats",
+       "rstatix",
+       "ggExtra",
+       "ggpubr",
+       "gplots",
+       "lubridate",
+       "grid",
+       "maSigPro",
+       "DataCombine",
+       "gridExtra",
+       "GenomicRanges",
+       "rtracklayer",
+       "GenomicFeatures",
+       "trackViewer")
+       
+
+#maSigPro reference: Conesa, A., Nueda M.J., Alberto Ferrer, A., Talon, T. 2006. maSigPro: a Method to Identify Significant Differential Expression Profiles in Time-Course Microarray Experiments. Bioinformatics 22, 1096-1102
+
+```
+
+### Transcriptional analysis, Figure 1
+
+#### Load data and select the relevant genes 
+```{r}
+m <- read.delim ("GE-dulmage.txt", sep = "\t") 
+
+#this file is too large to host on github. Download the file from the Duke Digital Repository at  https://dx.doi.org/10.7924/r4pz54w7h. Click on "Expression" on the front page, then download the file "1154_normalized_GE_data.csv". Use "read.csv" command to load this file.
+
+#If you use gene expression data from that repository in a publication, please cite the source article: 
+#Copy number variation is associated with gene expression change in archaea
+#Keely A. Dulmage, Cynthia L. Darnell, Angie Vreugdenhil, and Amy K. Schmid1 Microb Genom. 2018 Sep; 4(9): e000210. doi: 10.1099/mgen.0.000210
+
+#subset 
+g<-c("VNG0194H", "VNG0195H", "VNG0192G")
+m.g <- subset(m, gene %in% g)
+
+```
+
+
+#### Make subpanel 1B
+```{r}
+#get the output pdf set up an specify a rectangular output image
+pdf("geplot.pdf", width = 6, height = 4)
+
+#plot just to see what it looks like
+matplot(t(m.g[3,]), type = "l", col = c("light green"), lty = 1, lwd = 1, na.rm = TRUE, axes = FALSE, xlab = "", ylab = "")
+par(new = TRUE)
+matplot (t(m.g[1:2,]), type = "l", lty = 1, lwd = 1, col = c("purple", "blue"), xlab = "Condition number", ylab = "Expression ratio (log10)")
+
+#make a legend
+legend(-0.5,3.5, legend = c("ftsZ2", "cdrS", "cdrL"), bty="n", lty = 1, lwd = 2, col = c("purple", "blue","light green"), text.font = c(3,3,3))
+
+#output the pdf
+dev.off()
+
+```
+
+#### Make subpanels B and D: Zoom-ins to show conditions where LSZ are co-expressed, and where L is not co-expressed with SZ
+
+##### Plot subpanel B
+```{r}
+#subset to select the conditions in which genes are co-expressed
+m.g.c<-m.g %>% dplyr::select(contains("co__")) #yes
+m.g.n<-m.g %>% dplyr::select(contains("Ni"))
+m.g.m<-m.g %>% dplyr::select(contains("Mn"))
+m.g.cu<-m.g %>% dplyr::select(contains("Cu__"))
+m.g.zn<-m.g %>% dplyr::select(contains("Zn"))
+
+#select all the columns that have metal and oxidative stress: H2O2, PQ, Mn, Ni, Co, 
+m.g.stress<-cbind(m.g.c, m.g.n, m.g.m, m.g.cu, m.g.zn)
+
+#set up pdf
+pdf("geplot-stress-ZSLcorr.pdf", width = 6, height = 4)
+
+#plot
+matplot(t(m.g.stress), type = "l", lty = 1, lwd = 1, col = c("purple", "blue", "light green"), xlab = "Condition number", ylab = "Expression ratio (log10)")
+
+#output
+dev.off()
+
+```
+
+##### For these metal stress conditions, correlate SZ vs L 
+```{r}
+#First treat SZ as one unit, since they're almost always correlated with each other. 
+sz<-m.g.stress[1:2, ]
+sz.mean<-apply(sz, 2, mean)
+l<-m.g.stress[3, ]
+l.mean<-apply(l,2,mean)
+cor (sz.mean, l.mean)
+
+dim(m.g.stress)
+
+```
+
+##### Calculate the significance of the correlation SZ to L
+```{r}
+
+#calculate the significance of the correlation using psycometric package
+#sample size is the number of columns - i.e. dim(m.g.o) = 58
+
+CIr(r = 0.7710611, n = 50, level = 0.95)
+```
+
+
+##### Plot conditions where SZ and L are not as well correlated (e.g. rapid growth)
+```{r}
+
+m.g.o<-m.g %>% dplyr::select(contains("o2_set")) #no
+
+
+#set up pdf
+pdf("geplot-nonstress.pdf", width = 6, height = 4)
+
+#plot
+matplot(t(m.g.o), type = "l", lty = 1, lwd = 1, col = c("purple", "blue", "light green"), xlab = "Condition number", ylab = "Expression ratio (log10)")
+
+
+
+#output
+dev.off()
+
+```
+
+##### For these non-stress conditions, correlate SZ vs L 
+```{r}
+#calculate correlation for non-stress
+
+sz.grow<-m.g.o[1:2, ]
+sz.mean.g<-apply(sz.grow, 2, mean)
+l.grow<-m.g.o[3, ]
+l.mean.g<-apply(l.grow,2,mean)
+cor (sz.mean.g, l.mean.g)
+dim(m.g.o)
+```
+
+##### Calculate the significance of the correlation SZ to L
+```{r}
+#calculate the significance of the correlation using psycometric package
+#sample size is the number of columns - i.e. dim(m.g.o) = 58
+
+CIr(r = -0.1583029, n = 58, level = 0.95)
+```
+
+#### Make subpanel C
+```{r}
+
+filtercorrtable <- cor(m.g[ ,2:1155])
+
+corrmap <- corrplot(filtercorrtable, method = "circle",
+                     col = colorRampPalette(c("lightgoldenrod4", "white", "midnightblue"))(100),
+                     type = "lower", order = "hclust", number.cex = 2,
+                     addCoef.col = "black", cl.pos = "b",
+                     tl.col = "black", tl.srt = 45, tl.cex = 1.5,
+                     diag = FALSE)
+
+```
+
+### Bulk culture microscopy and growth analysis, Figure 2
+
+
+### Aphidocholin microscopy analysis, Figure 3
+
+#### Read in the data and get it ready for plotting
+```{r}
+
+data00 <- read.csv("time00data.csv", header=TRUE)
+data06 <- read.csv("time06data.csv", header=TRUE)
+data17 <- read.csv("time17data.csv", header=TRUE)
+
+data00 <- mutate(data00, Condition = "Time00")
+data06 <- mutate(data06, Condition = "Time06")
+data17 <- mutate(data17, Condition = "Time17")
+
+data_A <- union(data00, data06)
+data <- union(data_A, data17)
+
+data$Strain_ordered = factor(data$Strain, levels=c("ura3", "cdrS", "Scomp"))
+data$Condition_rev = factor(data$Condition, levels = c("Time17", "Time06", "Time00"))
+group.colors <- c(ura3="#000000", cdrS="#2f738c", Scomp="#b8860b")
+```
+
+
+#### Calculate geometric means of cell area
+```{r}
+geomeans <- ddply(data, .(Condition, Strain), summarize, Area_micron.geomean = geoMean(Area_micron))
+data_new <- left_join(data, geomeans, by = c("Condition", "Strain"))
+
+label_names <- c(
+  Time00 = "Pre-aphidicolin",
+  Time06 = "6 hours post-addition", 
+  Time17 = "11 hours post-washout"
+  )
+
+
+write.table (geomeans, file = "aph.geomeans.txt", sep= "\t")
+```
+
+
+#### Plot - Figure 3
+```{r}
+
+ggplot(data_new, aes(x = Area_micron, fill = Condition, colour = Condition)) +
+  geom_density(alpha = 0.6) +
+  scale_x_continuous(limits = c(0, 40), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 0.3), expand = c(0, 0)) +
+  facet_grid(Strain_ordered ~ ., labeller = labeller(.cols = label_both)) +
+  theme_minimal() +
+  theme(text=element_text(colour="black"),
+        plot.background=element_rect(fill="white"),
+        panel.background=element_rect(fill="white", colour="black"), 
+        panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        axis.text=element_text(color="black", size=10),
+        axis.ticks.y.left=element_line(colour="black"),
+        axis.title.y=element_text(size=14)) +
+  labs(x=expression("Area ("*mu*m^2*")"), y = "Relative frequency") +
+  geom_vline(aes(xintercept = Area_micron.geomean, colour = Condition),  
+             linetype = "dashed") +
+  scale_color_viridis_d(begin = 0, end = .8, aesthetics = c("fill", "colour"), 
+                        option = "plasma") 
+
+```
+
+#### Perform statistical tests to determine the significance of the difference between the means of each distribution
+
+##### Run the test
+```{r}
+#Can assume normally distrubuted means given the central limit theorem (sample sizes are large ~500), so can perform paramtric test.
+#design is 2x2 mixed 
+#IV between: Strain
+#IV within: Condition (time point)
+#DV: area (oqn quantile normalized data)
+
+#add sample ids to each treatment
+data$id <- 1:nrow(data)
+
+#convert time dependent variable to a factor
+data$time<-as.factor(data$Condition)
+
+
+aov_strain_time <- aov(Area_micron ~ Strain*Condition + Error(Label/time), data=data)
+summary(aov_strain_time) 
+
+#Results suggest that the strains are different (between group), that each strain is affected over time (within group), but that there is no interaction between the two groups. Suggests a simple main effect. Run the one-way test for each of Strain across time.
+```
+
+##### Compare each strain to itself across time 
+```{r}
+#IV (within): Condition (ie time)
+#DV: oqn (per strain)
+data.ura<-filter(data, Strain == "ura3")
+aov.time.ura <- aov(Area_micron ~ Condition + Error(Label/Condition), data = data.ura)
+summary(aov.time.ura)
+
+#yes, ura3 cell area changes significantly in response to aphidocholin over time.
+```
+
+```{r}
+#IV (within): Condition (ie time)
+#DV: oqn (per strain)
+data.scomp<-filter(data, Strain == "Scomp")
+aov.time.scomp<- aov(Area_micron ~ Condition + Error(Label/Condition), data = data.scomp)
+summary(aov.time.scomp)
+
+#yes, Scomp cell area changes significantly in response to aphidocholin over time.
+```
+
+```{r}
+#IV (within): Condition (ie time)
+#DV: oqn (per strain)
+data.s<-filter(data, Strain == "cdrS")
+aov.time.s<- aov(Area_micron ~ Condition + Error(Label/Condition), data = data.s)
+summary(aov.time.s)
+
+#yes, cdrS cell area changes significantly in response to aphidocholin over time but depends on pval cutoff (ie if use p<0.01, this is not signif). Basically, cdrS changes much less dramatically than ura3 and Scomp over time.
+```
+
+##### Posthoc tests. compare each strain to itself between each time point.
+```{r}
+#Does ura3 change between time points?  
+t1 <- filter(data, Condition == 'Time00')
+t2 <- filter(data, Condition == 'Time06')
+t3 <- filter(data, Condition == "Time17")
+ura <- filter(data, Strain == 'ura3')
+scomp <- filter(data, Strain == 'Scomp')
+s <- filter(data, Strain == "cdrS")
+
+pairwise.wilcox.test(ura$Area_micron, ura$Condition, p.adj = "BH")
+pairwise.wilcox.test(scomp$Area_micron, scomp$Condition, p.adj = "BH")
+pairwise.wilcox.test(s$Area_micron, s$Condition, p.adj = "BH")
+
+#Also test for significance of the difference between the ura3 and complemented strain at the final time point.
+pairwise.wilcox.test(t3$Area_micron, t3$Strain, p.adj = "BH")
+```
+
+### Single cell time lapse imaging analysis, Figure 4
+
+#### Read in the data and put into format useful for plotting and stats
+```{r}
+divratio <- read.csv('divratio-garner.csv', header = TRUE) %>%
+    gather(strain, ratio, ura3:cdrS) %>%
+    drop_na()
+
+abirth <- read.csv('areabirth-garner.csv', header = TRUE) %>%
+    gather(strain, abirth, ura3:cdrS) %>%
+    drop_na()
+
+adiv <- read.csv('areadiv-garner.csv', header = TRUE) %>%
+    gather(strain, adiv, ura3:cdrS) %>%
+    drop_na()
+
+
+td <- read.csv('td-garner.csv', header = TRUE) %>%
+    gather(strain, td, ura3:ftsZ2) %>%
+    drop_na() 
+
+abirth.adiv <- read.csv('abirth-adiv.csv', header = TRUE) 
+abirth.adiv.wide<-read.csv('abirth-adiv-wide.csv', header = TRUE)
+
+group.colors <- c(ura3="#000000", cdrS="#29AF7FFF", cdrL="#FDE725FF", ftsZ2="#453781FF")
+
+```
+
+
+
+#### Calculate cell area doubling time and plot distributions (Figure 4A)
+```{r}
+
+
+pdf("area_td.pdf", width = 6, height = 4)
+ggplot(data = td, aes(x = td, stat(density), color = strain)) +
+  geom_freqpoly(binwidth = 2, lwd = 1.25) +
+  theme_light() +
+  scale_color_manual(values = group.colors, labels = c(expression( italic("cdrS")), expression(italic("ftsZ2")), expression(italic("ura3")))) +
+  theme(panel.grid = element_blank(), axis.text = element_text(size = 10), axis.title = element_text(size = 12)) +
+  scale_x_continuous(expand = c(0,0), limits = c(0, 18)) +
+  scale_y_continuous(expand = c(0,0)) +
+  
+  labs(x = 'Cell area doubling time (hr)', y = 'Relative frequency') 
+  
+dev.off()
+```
+
+#### Calculate stats for doubling time (text corresponding to fig 4A)
+```{r}
+#calculate means and standard deviation of cell doubling time distributions for each strain
+td.stats <-ddply(td, .(strain), summarize, td.geo = geoMean(td), median = median(td), sd = sd(td), n.obs = length(td))
+
+td.stats
+
+# statistical tests. 
+qqPlot(td$td) # not normally distributed, but given the critical limit theorem, can assume normality given that there are >40 observations for each strain.
+
+td.wide <- read.csv('td-garner.csv', header = TRUE)
+
+td.test<-aov(ura3 ~ cdrS*ftsZ2, data = td.wide)
+summary(td.test) #differences between strains is not significant. 
+
+```
+
+#### Calculate effect size and confidence intervals given the large number of observations.
+```{r}
+
+#from https://cran.r-project.org/web/packages/sjstats/vignettes/anova-statistics.html and the sjstats package: "The eta-squared is the proportion of the total variability in the dependent variable that is accounted for by the variation in the independent variable. It is the ratio of the sum of squares for each group level to the total sum of squares. It can be interpreted as percentage of variance accounted for by a variable."
+
+eta_sq(td.test, ci.lvl = .95) #most common measure of effect size
+
+#only 0-0.1% of the variation in area doubling time (dependent variable) is explained by strain difference (independent). Looking at s and z2 together is 9.4% of variance. Larger, but also not relevant, because z2 and S deletion are in different strains, i.e. independent and not possibly interacting variables.
+```
+
+
+#### Calculate division area, birth area
+```{r}
+#divarea <- read.csv('garner_area_division.csv', header = TRUE)
+
+adiv.stats <- ddply(adiv, .(strain), summarize, geomean = geoMean(adiv), median = median(adiv), sd = sd(adiv), nobs = length(adiv), cv = sd(adiv)/geoMean(adiv))
+
+abirth.stats <- ddply (abirth, .(strain), summarize, geomean = geoMean(abirth), median = median(abirth), sd = sd(abirth), nobs = length(abirth), cv = sd(abirth)/geoMean(abirth))
+
+#very large division area for cdrS, with high standard deviation.
+```
+
+#### Figure 4B &C
+```{r}
+#http://www.sthda.com/english/wiki/be-awesome-in-ggplot2-a-practical-guide-to-be-highly-effective-r-software-and-data-visualization
+
+pdf("a.pdf", width = 4, height = 8)
+
+
+abirth.ggdot<-ggdotplot(abirth, x = "strain", y = "abirth", position = position_jitter(0.3),
+          fill = "strain", color = "strain",  binwidth = 0.2, alpha = 0.5) +
+    
+    
+
+  theme_light() +
+  theme(panel.grid = element_blank()) +
+  scale_y_continuous(expand = c(0,0), limits = c(0, 70)) +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  stat_summary(fun.y = median, 
+               fun.ymin = median,
+               fun.ymax = median,
+               geom = 'crossbar', width = 0.5, 
+               aes(color = strain)) +
+  theme( axis.text.x  = element_text(size = 10), axis.text.y = element_text(size = 10), axis.title = element_text(size = 12), legend.position = "none") +
+  labs(x = 'Strain', y = 'Cell area at birth') +
+  coord_flip() +
+  NULL
+
+
+adiv.ggdot<-ggdotplot(adiv, x = "strain", y = "adiv",
+          fill = "strain", color = "strain", position = position_jitter(0.3), binwidth = 0.2, alpha = 0.5) +
+
+  theme_light() +
+  theme(panel.grid = element_blank()) +
+  scale_y_continuous(expand = c(0,0), limits = c(0, 70)) +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  stat_summary(fun.y = median, 
+               fun.ymin = median,
+               fun.ymax = median,
+               geom = 'crossbar', width = 0.5, 
+               aes(color = strain)) +
+  theme( axis.text.x  = element_text(size = 10), axis.text.y = element_text(size = 10), axis.title = element_text(size = 12), legend.position = "none") +
+  labs(x = 'Strain', y = 'Cell area at division') +
+  coord_flip() +
+    
+  NULL
+
+hist.b <- ggplot(data = abirth, aes(x = abirth, stat(density), color = strain)) +
+  geom_freqpoly(binwidth = 2, lwd = 1) +
+  theme_light() +
+  scale_color_manual(values = group.colors) +
+  theme(panel.grid = element_blank(), axis.text.x = element_blank(), axis.text.y = element_text(size = 10), legend.position = "none") +
+  #scale_x_continuous(expand = c(0,0), limits = c(0, 18)) +
+  #scale_y_continuous(expand = c(0,0)) +
+  labs(x = '', y = 'Relative frequency') +
+        
+  #, labels = element_text(c("ura3", "cdrS"))
+  NULL
+
+ hist.d <- ggplot(data = adiv, aes(x = adiv, stat(density), color = strain)) +
+  geom_freqpoly(binwidth = 2, lwd = 1) +
+  theme_light() +
+  scale_color_manual(values = group.colors, labels = element_text(c("ura3", "cdrS"))) +
+  theme(panel.grid = element_blank(), axis.text.x = element_blank(), axis.text.y = element_text(size = 10), legend.position = "none") +
+  #scale_x_continuous(expand = c(0,0), limits = c(0, 18)) +
+  #scale_y_continuous(expand = c(0,0)) +
+  labs(x = '', y = 'Relative frequency') +
+  
+  NULL
+ 
+ grid.newpage()
+grid.draw(rbind(ggplotGrob(hist.d), ggplotGrob(adiv.ggdot), ggplotGrob(hist.b), ggplotGrob(abirth.ggdot), size = "last"))
+  #gridExtra::grid.arrange( hist.d, adiv.dot, hist.b,abirth.dot, ncol = 1, nrow = 4)
+
+ # adiv.dot / abirth.dot
+
+dev.off()
+```
+
+#### Statistical comparisons, mother and daughter cell area
+```{r}
+#put data in format usable by anova
+ura.birth <- abirth.adiv.wide[ ,1:2]
+ura.birth <- gather(ura.birth,  daughter, area)
+colnames(ura.birth) <- c("which.daughter", "ura.d.area")
+
+cdr.birth <- abirth.adiv.wide[ ,3:4]
+cdr.birth <- gather (cdr.birth, daughter, area)
+colnames(cdr.birth) <- c("which.daughter", "cdr.d.area")
+
+ura.mom <- abirth.adiv.wide[ ,5]
+cdr.mom <- abirth.adiv.wide[ ,6]
+
+abirth.adiv.input <- as.data.frame(cbind(ura.birth$ura.d.area, cdr.birth$cdr.d.area, ura.mom, cdr.mom))
+colnames(abirth.adiv.input)<-c("ura.d.area", "cdr.d.area", "ura.mom", "cdr.mom")
+
+#test for normality
+qqPlot (abirth.adiv$area) #No! 
+qqPlot (log(abirth.adiv$area)) #not log normal - very far from normal. Even with ctrl limit, need a transformation.
+abirth.adiv.checknorm<-bestNormalize(abirth.adiv$area) #check which transformation is best.
+
+abirth.adiv.checknorm$chosen_transform #Ordered quantile normalization (OQN) is best normalization strategy
+abirth.adiv.checknorm$norm_stats #look at the information about the distributions following each transform
+
+```
+
+#### Perform OQN on the mother / daughgter area data
+```{r}
+md.area.n<-orderNorm(abirth.adiv$area)
+abirth.adiv$oqn.area<-predict(md.area.n)
+hist(abirth.adiv$oqn.area, breaks = 20)
+# data forced to normal distribution.
+```
+
+
+#### Pairwise Welch's test and effect size calculations on oqn-normalized mother and daughter areas
+```{r}
+pairwise.t.test(abirth.adiv$oqn.area, abirth.adiv$m.d.f, p.adjust.method = "BH", pool.sd = FALSE)
+
+#calculate effect size of difference between mothers, then difference between daughters.
+
+
+reverse.abirth.adiv<-dplyr::arrange(abirth.adiv, desc(m.d))
+
+cohens_d(reverse.abirth.adiv, oqn.area ~ m.d, paired = FALSE)
+
+
+```
+
+#### Calculate stats for division ratio
+```{r}
+div.s.nearcenter <-filter (divratio, ratio <= 0.60 & ratio >= 0.30, strain == "cdrS")
+div.s.nearpole <- filter (divratio, ratio >= 0.8 | ratio <= 0.2, strain == "cdrS")
+dim (div.s.nearcenter) #14 of 30 cells divide offset from center
+dim (div.s.nearpole) # 10 of 30 cells divide near the pole
+
+ratio.stats<-ddply(divratio, .(strain), summarize, divratio.geo = geoMean(ratio), median = median(ratio), sd = sd(ratio), n.obs = length(ratio), cv = sd(ratio)/geoMean(ratio))
+
+ratio.stats
+```
+
+
+
+#### Plot the division ratio histogram and raw data (subpanel 4D)
+```{r} 
+
+group.colors <- c(ura3="#000000", cdrS="#29AF7FFF")
+
+#, ftsZ2="#453781FF"
+pdf('divratio.pdf', width = 4, height = 4)
+
+divratio.ggdot<-ggdotplot(divratio, x = "strain", y = "ratio", add = "mean_sd", 
+          fill = "strain", color = "strain", position = position_jitter(0.03), binwidth = 0.01, alpha = 0.5) + 
+  
+  theme_light() +
+  theme(panel.grid = element_blank()) +
+  #scale_y_continuous(expand = c(0,0), limits = c(0, 70)) +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  stat_summary (fun.y = median, 
+               fun.ymin = median,
+               fun.ymax = median,
+               geom = 'crossbar', width = 0.5, 
+               aes(color = strain)) +
+  theme( axis.text.x  = element_text(size = 10), axis.text.y = element_text(size = 10, face = "italic"), axis.title = element_text(size = 12), legend.position = "none") +
+  labs(x = 'Strain', y = 'Division ratio') + 
+            coord_flip() +
+  
+  NULL
+          
+ 
+ratio_plot <- ggplot(data = divratio, aes(x = ratio, stat(density), 
+                                              color = strain)) +
+  geom_freqpoly(binwidth = 0.05, lwd = 1) +
+  theme_light() +
+  scale_color_manual(values = group.colors) +
+  theme(panel.grid = element_blank(), axis.text.x  = element_blank(), legend.position = "none") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = '', y = 'frequency') +
+  
+  NULL
+  
+grid.newpage()
+grid.draw(rbind(ggplotGrob(ratio_plot), ggplotGrob(divratio.ggdot), size = "last"))
+
+dev.off()
+#gridExtra::grid.arrange(ratio_plot, divratio.ggdot, ncol = 1, nrow = 2)
+
+#divratio.dot 
+#ratio_plot
+```
+
+### Nanostring gene expression analysis, Figure 6
+
+#### Load the Nanostring count data and normalize it to expression in NRC-1 control strain
+```{r}
+#import the data
+ns <- read.csv("count_corrected.csv", header = TRUE)
+
+#subset the data and put it in the format needed for normalization
+ns_tidy <- gather(ns, key = "Gene", value = "Count", colnames(ns)[8:30])
+ns_tidy <- filter(ns_tidy, Condition %in% c("OD0.2", "OD0.7", "OD1.5", "OD2.0", "aphid", "release"))
+NRC1_data <- filter(ns_tidy, Strain == "NRC1", Replicate == "A")
+norm_tidy <- ns_tidy
+norm_tidy$Relative_expression <- norm_tidy$Count
+
+#normalize
+for (i in 1:23) {
+  std_count <- NRC1_data$Count[i]
+  norm_tidy[norm_tidy$Gene == NRC1_data[i,]$Gene,]$Relative_expression <- 
+    norm_tidy[norm_tidy$Gene == NRC1_data[i,]$Gene,]$Count / std_count
+}
+
+#log transform the values
+norm_tidy$log.expr<-log(norm_tidy$Relative_expression)
+
+#subset to focus on relevant data
+core_set <- filter(norm_tidy, Strain %in% c("cdrS", "ura3")) %>%
+   droplevels()
+
+```
+
+#### Plot all the genes, Supplementary Figure 3
+```{r}
+
+# supp fig 3a
+group.colors <- c(ura3="#000000", cdrL="#7ed158", cdrS="#2f738c")
+
+growth_all <- filter(core_set, Category %in% c(1:4))
+
+pdf("growthall.pdf", width = 10, height = 8)
+ggplot(growth_all) +
+  geom_point(aes(x = Category, y = log.expr, color = Strain), 
+              size = 1, alpha = 0.5) +
+  geom_smooth(aes(x = Category, y = log.expr, 
+                  color = Strain, fill = Strain),
+              lwd = 0.5, span = 1, alpha = 0.25, method = "auto") +
+  theme_bw() +
+  scale_x_continuous(breaks=c(1, 2, 3, 4)) +
+  facet_wrap(~Gene, scales = "free") +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  labs(x = "OD600", y = "Relative expression") +
+  theme(panel.grid.minor.y = element_blank())
+
+dev.off()
+```
+#### Determine significantly differentially expressed genes using maSigPro package.
+Gene expression in response to the growth curve and the ∆cdrS mutant are analyzed and plotted. In the following section, gene expression in response to aphidocholin treatment are analyzed and plotted.
+
+##### Import the growth expression data and experimental design data objects for input to maSigPro
+```{r}
+#data
+ns.data.masig.log<-read.csv("ns.data.masig.log.csv")
+
+#design
+ns.design.masig<-read.csv ("ns.design.masig.csv")
+rownames(ns.design.masig) <- as.character(unlist(ns.design.masig[,1]))
+ns.design.masig <- ns.design.masig[ ,-1 ]
+
+```
+
+##### Run the model
+```{r}
+#define regression model
+ design <- make.design.matrix(ns.design.masig, degree = 2, time.col = 1, repl.col = 2, group.cols = c(3:ncol(ns.design.masig)))
+design$groups.vector
+#colnames(design$dis)<-c("Sample", "cdrSvsura3", "Time","TimexcdrS","Time2","Time2xcdrS")
+
+```
+
+```{r}
+# find significant genes 
+ fit <- p.vector(ns.data.masig.log, design, Q = 0.01, MT.adjust = "BH")
+```
+
+##### Examine the results
+```{r}
+#number of sig genes
+fit$i #20 genes at Q val of 0.01. This is a lot but it is genes that change expression across the time course, not genes that are different between groups - that happens in the next step.
+fit$alfa
+```
+
+```{r}
+#determine genes significantly different between strains 
+ tstep <- T.fit(fit, step.method = "backward", alfa = 0.01)
+#look at the results
+tstep$sol #shows the p.val of anova, rsq of the fit to the model, p.valor (p value of regression). Looks like  
+tstep.results<-tstep$sol 
+write.table (tstep.results, file = "tstep.results.masig.txt", sep = "\t")
+
+
+```
+
+```{r}
+#Look at which genes are different between groups
+sigs <- get.siggenes(tstep, rsq = 0.7, vars = "groups") #chose this cutoff because it is the median of the rsq from T.fit results
+  names(sigs)
+  names(sigs$sig.genes)
+  sigs$sig.genes$cdrSvsura3
+  sigs$sig.genes$ura3
+  
+```
+
+##### Graphical display of results to get a sense of the clusters 
+```{r}
+#look at gene expression changes in parent control during growth
+see.genes(sigs$sig.genes$ura3, show.fit = T, dis = design$dis, cluster.method = "hclust")
+
+```
+
+##### Write output files for supplementary table 7
+```{r}
+#save the list of genes differentially expressed in response to growth in the parent strain. Also make data frame for plotting for figure. The facet wrap labels for these 10 signif genes were highlighted manually in Illustrator in Supplementary Fig 3A.
+ura3.sig<-sigs$sig.genes$ura3
+ura3.sig.pvals<-ura3.sig$sig.pvalues
+ura3.sig.profiles<-ura3.sig$sig.profiles
+write.table(ura3.sig.pvals, file = "ura.masig.growth.pvals.txt", sep = "\t")
+write.table(ura3.sig.profiles, file = "sig.genes.masigpro.ura.txt", sep = "\t")
+```
+
+```{r}
+#save the list of genes differentially expressed in response to growth in the mutant strain.
+cdr.sig<-sigs$sig.genes$cdrSvsura3
+cdr.sig.pvals<-cdr.sig$sig.pvalues
+cdr.sig.profiles<-cdr.sig$sig.profiles
+write.table(cdr.sig.pvals, file = "cdr.masig.growth.pvals.txt", sep = "\t")
+write.table(cdr.sig.profiles, file = "sig.genes.masigpro.cdr.txt", sep = "\t")
+
+```
+
+##### Plot the data for main text Figure 5A
+```{r}
+#Fig 5A (genes significantly differentially expressed in ∆S across the growth time course )
+cdr.plot <- filter(growth_all, Gene %in% c("ftsZ1", "ftsZ2", "sojA", "ftsZ3"))
+#cdr.sig.plot2 <- filter(growth_all, Gene %in% c("ftsZ3"))
+group.colors <- c(ura3="#000000", cdrS="#2f738c")
+
+pdf("fig5A.pdf" , width = 4, height = 4)
+ggplot(cdr.plot) +
+  geom_point(aes(x = Category, y = log.expr, color = Strain), 
+              size = 1, alpha = 0.5) +
+  geom_smooth(aes(x = Category, y = log.expr, 
+                  color = Strain, fill = Strain),
+            method = "auto", lwd = 1, span = 1, alpha = 0.25) +
+  theme_bw() +
+  scale_x_continuous(breaks=c(1, 2, 3, 4)) +
+  facet_wrap(Gene ~., scales = "fixed", ncol = 2) +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  labs(x = "Growth time point", y = "Relative expression") +
+  theme(panel.grid.minor.y = element_blank(), axis.text = element_text(size = 10), axis.title = element_text(size = 12), strip.text = element_text(face = "italic"), legend.position = "none")  
+  #ylim (-2, 1)
+
+
+
+#grid.arrange(plot1, plot2, ncol = 2)
+
+dev.off()
+```
+
+#### Aphidocholin differential gene expression analysis with maSigPro.
+
+##### plot the data to make Supplementary Figure 3B
+```{r}
+
+#Supplementary Figure 3b
+
+#subset the data to focus on aphidocholin treated samples
+aph <- filter(core_set, Category %in% c(5:6))
+
+pdf("aphall.pdf", width = 5, height = 25)
+
+#boxplots with raw data points shown.
+ggplot(aph, aes(x=Strain, y=log.expr, color = Strain)) + 
+  geom_boxplot()+
+  theme_bw() +
+  facet_grid(Gene ~ Condition, scales = "free") +
+  geom_jitter(size = 2, alpha = 0.5, position=position_jitter(0.2)) +
+scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  labs(x = "strain", y = "Relative expression") 
+
+dev.off()
+```
+
+##### Read in the data file and the design file
+```{r}
+#data
+aph.data.log<- read.csv("aph.data.log.csv")
+
+#design
+aph.design<-read.csv ("aph.design.final.csv")
+
+rownames(aph.design) <- as.character(unlist(aph.design[,1]))
+aph.design <- aph.design[ ,-1 ]
+
+#check to make sure that the design file rownames and data file column names match
+rownames(aph.design)
+colnames(aph.data.log)
+dim(aph.design)
+dim(aph.data.log)
+```
+##### Run the model for aphidocholin data
+```{r}
+#define regression model
+ design.aph <- make.design.matrix(aph.design, degree = 2, time.col = 1, repl.col = 2, group.cols = c(3:ncol(aph.design)))
+design.aph$groups.vector
+
+```
+
+```{r}
+# find significant genes 
+ fit.aph <- p.vector(aph.data.log, design.aph, Q = 0.01, MT.adjust = "BH")
+
+```
+
+##### Examine the results
+```{r}
+#number of sig genes
+fit.aph$i #12 genes at Q val of 0.01. This is a lot but it is genes that change expression in response to treatment, not genes that are different between groups - that happens in the next step.
+fit.aph$alfa
+```
+
+
+```{r}
+#determine genes significantly different between strains 
+ tstep.aph <- T.fit(fit.aph, step.method = "backward", alfa = 0.01)
+#look at the results
+tstep.aph$sol #shows the p.val of anova, rsq of the fit to the model, p.valor (p value of regression). 
+tstep.aph.results<-tstep.aph$sol 
+write.table (tstep.aph.results, file = "tstep.results.aph.txt", sep = "\t")
+
+
+```
+
+
+```{r}
+#Look at which genes are different between groups
+sigs.aph <- get.siggenes(tstep.aph, rsq = 0.7, vars = "groups") #chose this cutoff to be consistent with the growth time course analysis
+  #names(sigs)
+  #names(sigs$sig.genes)
+  sigs.aph$sig.genes$cdrSvsura3
+  sigs.aph$sig.genes$ura3
+  
+  #interesting! at alfa = 0.01 It says that Z2, sojABE (and of course VNG0194H, deleted in cdrS - a good pos ctrl for the masigpro method) are sig bw ura3 and cdrS in aph! 
+```
+##### Write output files for supplementary table 7
+```{r}
+#save the list of genes differentially expressed in response to growth in the parent strain. Also make data frame for plotting for figure. The facet wrap labels for these 10 signif genes were highlighted manually in Supplementary Fig 3A.
+ura3.sig.aph<-sigs.aph$sig.genes$ura3
+ura3.sig.aph.profiles<-ura3.sig.aph$sig.profiles
+ura3.sig.aph.pvals<-ura3.sig.aph$sig.pvalues
+write.table(ura3.sig.aph.pvals, file = "pvals.masigpro.ura.aph.txt", sep = "\t")
+write.table(ura3.sig.aph.profiles, file = "sig.genes.masigpro.ura.aph.txt", sep = "\t")
+```
+
+```{r}
+#save the list of genes differentially expressed in response to growth in the cdrS mutant strain.
+cdr.sig.aph<-sigs.aph$sig.genes$cdrSvsura3
+cdr.sig.aph.profiles<-cdr.sig.aph$sig.profiles
+cdr.sig.aph.pvals<-cdr.sig.aph$sig.pvalues
+write.table(cdr.sig.aph.pvals, file = "pvals.masigpro.cdr.aph.txt", sep = "\t")
+write.table(cdr.sig.aph.profiles, file = "sig.genes.masigpro.cdr.aph.txt", sep = "\t")
+
+```
+
+
+##### Make figure 5B
+```{r}
+#make data frame focusing on aphid data with z1, z2, and sojABE
+#Fig 5B
+group.colors <- c(ura3="#000000", cdrS="#2f738c")
+aph.z1z2soj <- filter(core_set, Condition %in% c("aphid", "release"), Gene %in% c("ftsZ1", "ftsZ2", "sojA", "sojB", "sojE")) %>%
+   droplevels()
+
+#boxplots with raw data points shown.
+pdf("fig5B.pdf", width = 7, height = 4)
+ggplot(aph.z1z2soj, aes(x=Strain, y=log.expr, color = Strain)) + 
+  #geom_dotplot(binaxis = "y")+
+  facet_grid(Condition ~ Gene) +
+  geom_dotplot(alpha = 0.5, position=position_jitter(0.2), binaxis = "y", stackdir= "center", binwidth = 0.1) +
+  stat_summary(fun.y = median, fun.ymin = median, fun.ymax = median,
+                 geom = "crossbar", width = 0.5,  fatten = 0.5) +
+  theme_bw()+
+  
+scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+   labs(x = "strain", y = "Relative expression") 
+
+dev.off()
+```
+
+### ChIP-seq visualization with trackViewer (Figure 7).
+See the ChIP-seq subfolder of this repository for ChIP-seq analysis code (read mapping, peak picking, and annotating peaks according to nearby genes).
+
+See this helpful tutorial for additional ideas for using trackViewer: https://bioconductor.org/packages/release/bioc/vignettes/trackViewer/.
+
+
+#### Import the files we will need to plot
+```{r}
+
+#These bam files are too large to host on github. Please download them from the Sequence Read Archive, accession number XXXXX. 
+log.bam1<-importBam("0195FLAG1log_IP_sorted.bam")
+log.pks1 <- importScore("HBT-cdrL1-log-pks.bed", ranges = GRanges("NC_002607.1", IRanges(1,2e6)))
+
+log.dat1<-coverageGR(log.pks1$dat)
+
+log.bam3<-importBam("0195FLAG3log_IP_sorted.bam")
+log.pks3 <- importScore("HBT-cdrL3-log-pks.bed", ranges = GRanges("NC_002607.1", IRanges(1,2e6)))
+
+log.dat3<-coverageGR(log.pks3$dat)
+
+stat.bam1<-importBam("0195FLAG1sta_IP_sorted.bam")
+stat.pks1<-importScore("HBT-cdrL1-stat-pks.bed", ranges = GRanges("NC_002607.1", IRanges(1,2e6)))
+
+stat.dat1<-coverageGR(stat.pks1$dat)
+
+stat.bam3<-importBam("0195FLAG3sta_IP_sorted.bam")
+stat.pks3<-importScore("HBT-cdrL3-stat-pks.bed", ranges = GRanges("NC_002607.1", IRanges(1,2e6)))
+
+stat.dat3<-coverageGR(stat.pks3$dat)
+
+
+hbt.genes<-importScore("hbt-genes-nostrand.bed", ranges = GRanges("NC_002607.1", IRanges(1,2e6)))
+
+```
+
+#### Make gene model
+```{r}
+
+my.txdb <- GenomicFeatures::makeTxDbFromGFF("20181113_hbt_GCF_000006805.1_ASM680v1_genomic.gff", format = "gff")
+
+gr <- GRanges("NC_002607.1", IRanges(1,2e6))
+
+some.genes <- GenomicFeatures::genes(my.txdb)
+
+rtracklayer::export(some.genes, "hbt-genes.bed", format = "bed")
+```
+
+
+#### make the plot, supplementary Figure S5A
+```{r}
+#Show peaks detected across the chromosome in all replicates and phases of growth.
+pdf("SF5A.pdf")
+viewerStyle <- trackViewerStyle()
+setTrackViewerStyleParam(viewerStyle, "margin", c(.1, .05, .02, .02))
+vp <- viewTracks(trackList (log.pks1, log.pks3, stat.pks1, stat.pks3), 
+                 gr=gr, viewerStyle=viewerStyle, 
+                 autoOptimizeStyle=TRUE)
+
+
+dev.off()
+```
+
+#### Make the plot ready for main text, Figure 7
+```{r}
+#make new tracks that allow overplotting
+log<-log.pks1
+log$dat2<-log.bam1$dat
+
+stationary<-stat.pks1
+stationary$dat2<-stat.bam1$dat
+
+
+```
+
+```{r}
+#optimize the viewing style
+optSty <- optimizeStyle(trackList(hbt.genes, stationary, log))
+trackList <- optSty$tracks
+viewerStyle <- optSty$style
+```
+
+```{r}
+#make the plot 
+
+pdf("fig07-zoomin.pdf")
+setTrackStyleParam(trackList[[3]], "ylim", c(0, 200))
+setTrackStyleParam(trackList[[2]], "ylim", c(0,200))
+setTrackStyleParam(trackList[[1]], "ylim", c(0,50))
+
+
+setTrackStyleParam(trackList[[1]], "ylabgp", list(cex=.8, col="black"))
+## set cex to avoid automatic adjust
+setTrackStyleParam(trackList[[2]], "ylabgp", list(cex=.8, col="black"))
+setTrackStyleParam(trackList[[3]], "ylabgp", list(cex=.8, col="black"))
+setTrackStyleParam(trackList[[1]], "marginBottom", .2)
+
+setTrackStyleParam(trackList[[1]], "color", "grey")
+setTrackStyleParam(trackList[[2]], "color", c("#7ed158", "black"))
+setTrackStyleParam(trackList[[3]], "color", c("#7ed158", "black"))
+
+
+
+setTrackViewerStyleParam(viewerStyle, "margin", c(.1, .05, .02, .02))
+viewTracks(trackList, 
+                 gr=gr.zoom,  viewerStyle=viewerStyle, operator = "+")
+                 #autoOptimizeStyle=TRUE)
+
+#output the plot to file
+dev.off()
+
+```
+
+
+
+#### Make the plots for supplementary Figure S5B
+```{r}
+#make new tracks that allow overplotting
+log3<-log.pks3
+log3$dat2<-log.bam3$dat
+
+stationary3<-stat.pks3
+stationary3$dat2<-stat.bam3$dat
+```
+
+
+```{r}
+#optimize the viewing style
+optSty <- optimizeStyle(trackList(hbt.genes, stationary3, log3))
+trackList <- optSty$tracks
+viewerStyle <- optSty$style
+```
+
+```{r}
+# Zoom in to plot the raw data for the cdrS promoter across the other replicates
+pdf("SF5B.pdf")
+
+setTrackStyleParam(trackList[[3]], "ylim", c(0, 600))
+setTrackStyleParam(trackList[[2]], "ylim", c(0,200))
+setTrackStyleParam(trackList[[1]], "ylim", c(0,50))
+
+
+setTrackStyleParam(trackList[[1]], "ylabgp", list(cex=.8, col="black"))
+## set cex to avoid automatic adjust
+setTrackStyleParam(trackList[[2]], "ylabgp", list(cex=.8, col="black"))
+setTrackStyleParam(trackList[[3]], "ylabgp", list(cex=.8, col="black"))
+setTrackStyleParam(trackList[[1]], "marginBottom", .2)
+
+setTrackStyleParam(trackList[[1]], "color", "grey")
+setTrackStyleParam(trackList[[2]], "color", c("#7ed158", "black"))
+setTrackStyleParam(trackList[[3]], "color", c("#7ed158", "black"))
+
+
+
+setTrackViewerStyleParam(viewerStyle, "margin", c(.1, .05, .02, .02))
+viewTracks(trackList, 
+                 gr=gr.zoom,  viewerStyle=viewerStyle, operator = "+")
+                 #autoOptimizeStyle=TRUE)
+
+#output the plot to file
+
+
+
+dev.off()
+
+```
