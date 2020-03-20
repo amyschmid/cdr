@@ -31,5 +31,10 @@
 [37] multilevel_2.6         MASS_7.3-51.5          nlme_3.1-145          
 [40] plyr_1.8.6                 
            
-
+## Source data
+All data needed to run the code in the "2020-03-19-cdr-analysis-all.Rmd" file are downloadable here _except_:
+- "GE-dulmage.txt" 
+     - file for gene expression analysis in Figure 1 is too large to host on github. Download the file from the Duke Digital Repository at  https://dx.doi.org/10.7924/r4pz54w7h. Click on "Expression" on the front page, then download the file "1154_normalized_GE_data.csv". Use "read.csv" command to load this file.
+     - If you use gene expression data from that repository in a publication, please cite the source article: 
+     - Copy number variation is associated with gene expression change in archaea. Keely A. Dulmage, Cynthia L. Darnell, Angie Vreugdenhil, and Amy K. Schmid1 Microb Genom. 2018 Sep; 4(9): e000210. doi: 10.1099/mgen.0.000210
 
