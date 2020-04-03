@@ -1,4 +1,4 @@
-# CdrS is required for cell division site placement but not elongation in hypersaline-adapted archaea. 
+# The ribbon-helix-helix domain proteins CdrS and CdrL regulate cell division in archaea. 
 **Authors: Cynthia L. Darnell[1], Jenny Zheng [2], Sean Wilson [2], Ryan M. Bertoli[1], Alexandre W. Bisson-Filho [3], Ethan Garner [2], Amy K. Schmid [1,4]**
 
 [1] Biology Department, Duke University, Durham, North Carolina, United States
@@ -40,5 +40,5 @@ All data needed to run the code in the "2020-03-19-cdr-analysis-all.Rmd" file ar
 
 - bam files for ChIP-seq visualization. 
      - These can be generated using the code in the ChIP-seq folder or 
-     - Downloaded from the sequence read archive at accession XXXXXX.
+     - Downloaded from the sequence read archive at GEO accession GSE148065.
 
