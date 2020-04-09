@@ -43,3 +43,7 @@ All data needed to run the code in the "2020-03-19-cdr-analysis-all.Rmd" file ar
      - These can be generated using the code in the ChIP-seq folder or 
      - Downloaded from the sequence read archive at GEO accession GSE148065.
 
+## Instructions
+- Start with the file "2020-03-19-cdr-analysis-all.rmd" in Rstudio.
+- Import the data files posted here as directed in RMD file. 
+- Make output plots and see data analysis.
