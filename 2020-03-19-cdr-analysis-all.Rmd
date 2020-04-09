@@ -50,7 +50,11 @@ using ("plyr",
        "GenomicRanges",
        "rtracklayer",
        "GenomicFeatures",
-       "trackViewer")
+       "trackViewer",
+       "referenceIntervals",
+       "effsize",
+       "moderndive",
+       "patchwork")
        
 
 #maSigPro reference: Conesa, A., Nueda M.J., Alberto Ferrer, A., Talon, T. 2006. maSigPro: a Method to Identify Significant Differential Expression Profiles in Time-Course Microarray Experiments. Bioinformatics 22, 1096-1102
@@ -94,9 +98,58 @@ dev.off()
 
 ```
 
-#### Make subpanels B and D: Zoom-ins to show conditions where LSZ are co-expressed, and where L is not co-expressed with SZ
 
-##### Plot subpanel B
+#### Calculate correlations described in the text for S, Z, L, trmB across all conditions
+```{r}
+gwt <-c("VNG0194H", "VNG0195H", "VNG0192G", "VNG1451C")
+m.gwt <- subset(m, gene %in% gwt)
+t.mgwt <- (t(m.gwt))
+colnames(t.mgwt)<-t.mgwt[1, ]
+t.mgwt<-t.mgwt[-1, ]
+write.csv (t.mgwt, file = "LSZT_array_transpose.csv")
+```
+
+```{r}
+t.mg.numeric<-data.matrix(read.csv("LSZT_array_transpose.csv"))
+colnames(t.mg.numeric)<-c("condition", "ftsZ2", "cdrS", "cdrL", "trmB")
+mycors <- cor(t.mg.numeric[ ,2:5])
+#summary(mycors)
+mycors
+
+
+
+#visualize the correlations (included via text rather than graphic in ms)
+#pdf("corrplot.pdf")
+#corrmap <- corrplot(mycors, method = "circle",
+                     #col = colorRampPalette(c("lightgoldenrod4", "white", "midnightblue"))(100),
+                     #type = "lower", order = "hclust", number.cex = 2,
+                     #addCoef.col = "black", cl.pos = "b",
+                     #tl.col = "black", tl.srt = 45, tl.cex = 1.5,
+                     #diag = FALSE)
+#dev.off()
+
+
+```
+
+#### Calculate CIs
+```{r}
+CIr(r = 0.9235775, n = 1154, level = 0.95) #CI of Z vs S
+
+CIr(r = 0.2986511, n = 1154, level = 0.95) #CI of Z vs L
+
+CIr(r = -0.2913172, n = 1154, level = 0.95) #CI of Z with trmB
+
+CIr(r = 0.2750325 , n = 1154, level = 0.95) #CI of S with L
+
+CIr(r =-0.27474541 , n = 1154, level = 0.95) #CI of S with trmB
+
+CIr(r = -0.02217327 , n = 1154, level = 0.95) #CI of L with trmB
+```
+
+#### Make subpanels
+
+##### Plot subpanel C
+Zoom-ins to show conditions where LSZ are co-expressed, and where L is not co-expressed with SZ
 ```{r}
 #subset to select the conditions in which genes are co-expressed
 m.g.c<-m.g %>% dplyr::select(contains("co__")) #yes
@@ -181,22 +234,329 @@ dim(m.g.o)
 CIr(r = -0.1583029, n = 58, level = 0.95)
 ```
 
-#### Make subpanel C
-```{r}
-
-filtercorrtable <- cor(m.g[ ,2:1155])
-
-corrmap <- corrplot(filtercorrtable, method = "circle",
-                     col = colorRampPalette(c("lightgoldenrod4", "white", "midnightblue"))(100),
-                     type = "lower", order = "hclust", number.cex = 2,
-                     addCoef.col = "black", cl.pos = "b",
-                     tl.col = "black", tl.srt = 45, tl.cex = 1.5,
-                     diag = FALSE)
-
-```
 
 ### Bulk culture microscopy and growth analysis, Figure 2
 
+#### Read in the data and format appropriately
+```{r}
+#CFU data
+data.cfu <- read.csv("ODCFU.csv", header=TRUE)
+data.cfu <- filter(data.cfu, Strain != 'VNG0195H') %>% droplevels()
+
+data_rep <- filter(data, Strain == 'ura3')
+data_rep$Strain <- 'ura3B'
+
+data.cfu <- rbind(data, data_rep)
+data.cfu$group <- ifelse(data.cfu$Strain %in% c('ura3', 'ftsZ2'), 'A', 'B')
+
+data_subset <- filter(data, OD < 0.2)
+
+#growth data
+growth <- read.csv("growth.csv", header=TRUE)
+
+#cell length data
+data.len <- read.csv('Growth_curve_length.csv', header = TRUE)
+data.len <- as.data.frame(data.len)
+data.len <- filter(data.len, Strain != 'cdrL') %>% droplevels()
+data.len$Strain <- factor(data.len$Strain, levels = c('ura3', 'cdrS', 'ftsZ2'))
+data.len$Growth_phase <- factor(data.len$Growth_phase, 
+                            levels = c('earlylog', 'midlog', 'earlysta', 'sta'))
+
+
+
+#cell area data
+data.ar <- read.csv('Growth_curve_area.csv', header = TRUE)
+data.ar <- as.data.frame(data.ar)
+data.ar <- filter(data.ar, Strain != 'cdrL') %>% droplevels()
+data.ar$Strain <- factor(data.ar$Strain, levels = c('ura3', 'cdrS', 'ftsZ2'))
+data.ar$Growth_phase <- factor(data.ar$Growth_phase, levels = c('earlylog', 'midlog', 'earlysta', 'sta'))
+
+
+```
+
+#### Make the plot for Supplementary Figure 2
+```{r}
+group.colors <- c(ura3="#000000", cdrS="#2f738c", ftsZ2="#441152")
+
+growth_phase.labs <- c('Early log phase', 'Midlog phase', 
+                       'Early stationary phase', 'Stationary phase')
+names(growth_phase.labs) <- c('earlylog', 'midlog', 'earlysta', 'sta')
+
+
+strain.labs <- c('ura3', 'cdrS', 'ftsZ2')
+names(strain.labs) <- c('ura3', 'cdrS', 'ftsZ2')
+
+ggplot(data.len) +
+  geom_density(aes(x = Length, y = ..density.., fill = Strain, color = Strain), 
+               alpha = 0.65, show.legend = FALSE, lwd = 0.2) +
+  scale_x_continuous(expand = c(0, 0), limits = c(0, 60)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw() +
+  labs(x=expression(paste("Length (", mu, "m)", sep = "")), y = 'Relative frequency') +
+  facet_grid(rows = vars(Strain), cols = vars(Growth_phase),
+             labeller = labeller(Growth_phase = growth_phase.labs,
+                                 Strain = strain.labs)) +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  theme(panel.background = element_blank(), panel.grid = element_blank(),
+        panel.spacing = unit(1, "lines"), strip.text.y = element_text(face = 'italic')) +
+  NULL
+
+ggsave('cell_length_all.pdf', height = 5, width = 7, dpi = 600)
+```
+
+#### Make the plot for Figure 2A
+```{r}
+### set up geomeans for early log plot
+ura3_geomean <- aggregate(Length ~ Growth_phase, 
+                          data = filter(data.len, Strain == "ura3"), geoMean)
+ura3_sd <- aggregate(Length ~ Growth_phase, 
+                     data = filter(data.len, Strain == "ura3"), sd)
+
+early_log_data <- filter(data.len, Growth_phase == 'earlylog')
+mid_log_data <- filter(data.len, Growth_phase == 'midlog')
+early_sta_data <- filter(data.len, Growth_phase == 'earlysta')
+sta_data <- filter(data.len, Growth_phase == 'sta')
+
+
+early_log_geomean <- filter(ura3_geomean, Growth_phase == "earlylog")
+early_log_sd <- filter(ura3_sd, Growth_phase == "earlylog")
+mean_line <- early_log_geomean$Length
+mean_plus <- early_log_geomean$Length + early_log_sd$Length
+mean_minus <- early_log_geomean$Length - early_log_sd$Length
+
+
+ggplot(early_log_data, aes(x = Length, fill = Strain, color = Strain)) +
+  annotate("rect", xmin = mean_minus, xmax = mean_plus, ymin = 0, ymax = Inf,
+           alpha = 0.5, fill = "#C0C0C0") +
+  geom_density(alpha = 0.75, show.legend = FALSE, lwd = 0.5) +
+  geom_rug(sides = "b", alpha = 0.4, length = unit(0.1, "npc"), 
+           show.legend = FALSE) +
+  scale_x_continuous(expand = c(0, 0), 
+                     breaks = seq(0, 80, by = 20)) +
+  scale_y_continuous(limits = c(0, 0.20),
+                     expand = c(0, 0.03),
+                     breaks = seq(0, 0.15, by = 0.05)) +
+  theme_minimal() +
+  theme(text = element_text(size = rel(5)), 
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()) +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  labs(x=expression(paste("Length (", mu, "m)", sep = "")),
+       y = "Relative frequency") +
+  geom_vline(aes(xintercept = mean_line), linetype = 2) +
+  facet_grid(Strain ~ .) +
+  NULL
+
+ggsave("early_log_length_dist.pdf", width = 12, height = 22, dpi = 300)
+```
+#### Calculate the length geometric means and summary stats reported in main text and Table 1.
+```{r}
+stats.len <- ddply(data.len, .(Growth_phase, Strain), summarize, geomean = geoMean(Length), sd = sd(Length), nobs = length(Length), sem = (sd(Length)/sqrt(nobs)))
+
+stats.len
+
+```
+#### Calculate the area geometric means and summary stats reported in main text and Table 1.
+```{r}
+stats.area <- ddply(data.ar, .(Growth_phase, Strain), summarize, geomean = geoMean(Area), sd = sd(Area), nobs = length(Area), sem = (sd(Area)/sqrt(nobs)))
+
+stats.area
+
+```
+
+#### Detect the significance of the difference between the geomeans of the distribution of parent vs mutant cells in each growth phase
+```{r}
+# statistical tests. 
+qqPlot(data.ar$Area) 
+qqPlot(data.len$Length) # not normally distributed. Given the critical limit theorem, can use parametric tests because >200 observations for each strain. But distribution is highly skewed. Try with data transform.
+
+```
+
+
+##### decide on best transform
+```{r}
+len.checknorm<-bestNormalize(data.len$Length) #check which transformation is best.
+len.checknorm$chosen_transform #Ordered quantile normalization (OQN) is best normalization strategy
+len.checknorm$norm_stats #look at the information about the distributions following each transform
+
+
+ar.checknorm<-bestNormalize(data.ar$Area) #check which transformation is best.
+ar.checknorm$chosen_transform #Ordered quantile normalization (OQN) is best normalization strategy
+ar.checknorm$norm_stats #look at the information about the distributions following each transform
+```
+
+#### Perform OQN on the length and area data
+```{r}
+area.n<-orderNorm(data.ar$Area)
+data.ar$oqn.area<-predict(area.n)
+hist(data.ar$oqn.area, breaks = 20)
+# data forced to normal distribution.
+
+len.n<-orderNorm(data.len$Length)
+data.len$oqn.len<-predict(len.n)
+hist(data.len$oqn.len, breaks = 20)
+# data forced to normal distribution.
+```
+
+#### Pairwise Welch's test and effect size calculations on oqn-normalized hv and hm areas
+```{r}
+#subset length data
+data.len.elog.s<-filter(data.len, Strain == "cdrS", Growth_phase == "earlylog")
+data.len.elog.u<-filter(data.len, Strain == "ura3", Growth_phase == "earlylog")
+data.len.elog.z<-filter(data.len, Strain == "ftsZ2", Growth_phase == "earlylog")
+
+#perform tests on length data differences between strains
+t.test(data.len.elog.s$oqn.len, data.len.elog.u$oqn.len, p.adjust.method = "BH", pool.sd = FALSE)
+t.test(data.len.elog.z$oqn.len, data.len.elog.u$oqn.len, p.adjust.method = "BH", pool.sd = FALSE)
+
+#subset area data
+data.ar.elog.s<-filter(data.ar, Strain == "cdrS", Growth_phase == "earlylog")
+data.ar.elog.u<-filter(data.ar, Strain == "ura3", Growth_phase == "earlylog")
+data.ar.elog.z<-filter(data.ar, Strain == "ftsZ2", Growth_phase == "earlylog")
+
+#perform tests on length data differences between strains
+t.test(data.ar.elog.s$oqn.area, data.ar.elog.u$oqn.area, p.adjust.method = "BH", pool.sd = FALSE)
+t.test(data.ar.elog.z$oqn.area, data.ar.elog.u$oqn.area, p.adjust.method = "BH", pool.sd = FALSE)
+
+```
+
+##### Given the large n, calculate effect size of difference between mothers, then difference between daughters.
+```{r}
+#put cell length data in format for effect size calc
+oqnlen <- as.data.frame(cbind(data.len.elog.u$oqn.len, data.len.elog.s$oqn.len, data.len.elog.z$oqn.len))
+colnames(oqnlen) <- c("ura3", "cdrs", "ftsz2")
+
+#calc effect size
+cohen.d(oqnlen$cdrs, oqnlen$ura3, paired = FALSE)
+cohen.d(oqnlen$ftsz2, oqnlen$ura3, paired = FALSE)
+
+
+#put cell area data in format for effect size calc
+oqnar <- as.data.frame(cbind(data.ar.elog.u$oqn.area, data.ar.elog.s$oqn.area, data.ar.elog.z$oqn.area))
+colnames(oqnar) <- c("ura3", "cdrs", "ftsz2")
+
+#calc effect size
+cohen.d(oqnar$cdrs, oqnar$ura3, paired = FALSE)
+cohen.d(oqnar$ftsz2, oqnar$ura3, paired = FALSE)
+
+```
+
+#### Make the plot for Figure 2B
+```{r}
+
+ggplot(growth)+
+  geom_point(aes(x=X, y=ura3), color="#000000", shape =21, size = 2)+
+  geom_smooth(se=growth$ura3_SE, aes(x=X, y=ura3), color="#000000", fill="#000000", alpha = 0.5, lwd = 1)+
+  
+  geom_point(aes(x=X, y=VNG0194H), color="#2f738c", shape = 21, size = 2)+
+  geom_smooth(se=growth$VNG0194H_SE, aes(x=X, y=VNG0194H), color="#2f738c", fill="#2f738c", alpha = 0.5, lwd = 0.5)+
+  
+  geom_point(aes(x=X, y=ftsZ2), color="#441152", shape = 21, size = 2)+
+  geom_smooth(se=growth$ftsZ2_SE, aes(x=X, y=ftsZ2), color="#441152", fill="#441152", alpha = 0.5, lwd = 0.5)+
+  
+  
+  theme_bw()+
+  scale_y_log10()+
+  labs(x="Time (hours)", y="Cell Density (OD600)")+
+  theme(axis.title=element_text(size=14), axis.text=element_text(size=12))
+  
+ggsave("2020-04-03-growth_curve.pdf", width=7.5, height=4)
+
+```
+
+#### Calculate correlation and significance of correlation between the OD vs CFU slopes for each strain
+```{r}
+#these correlations are described in the main text
+ura3_data <- filter(data, Strain == 'ura3')
+cdrS_data <- filter(data, Strain == 'VNG0194H')
+ftsZ2_data <- filter(data, Strain == 'ftsZ2')
+
+cor.test(ura3_data$CFUlog10, ura3_data$ODlog2)
+cor.test(cdrS_data$CFUlog10, ura3_data$ODlog2)
+cor.test(ftsZ2_data$CFUlog10, ftsZ2_data$ODlog2)
+
+```
+
+
+#### Make plot, figure 2C
+```{r}
+#this plot shows the independent correlations for each strain
+
+group.colors <- c(ura3 = "#000000", VNG0194H = "#2f738c", 
+                  ftsZ2 = "#441152", ura3B = '#000000')
+
+ggplot(data, aes(x = ODlog2, y = CFUlog10, color = Strain, fill = Strain)) +
+  theme_light() +  
+  theme(panel.grid = element_blank(),
+        legend.position = 'none',
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14)) +
+  geom_point(size=2, alpha=0.75) +
+  geom_smooth(method = lm, fullrange = TRUE) +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  facet_grid(. ~ group) +
+  labs(x = expression(Log[2]~~OD[600]),
+       y = expression(Log[10]~~CFU/ml)) +
+  NULL
+
+ggsave("OD_CFU_ind_corr.pdf", width=5, height=3)
+
+```
+
+#### Statistical tests to detect significant differences in OD vs CFU correlation of the ∆cdrS, ∆ura3, ∆ftsZ2 strains
+
+##### First run linear model to see if slopes of OD vs CFU are similar enough between strains to compare
+
+```{r}
+
+# Test to see if different slopes are needed for two strains
+# Very high p-value for ODlog2: strain 2-way interaction indicates independence between strains, thus directly comparing equal slopes is quite reasonable.
+
+summary(aov(CFUlog10 ~ ODlog2 * Strain, 
+            data = filter(data_subset, group == "A")))
+
+#
+equalslopes.mod <- lm(CFUlog10 ~ ODlog2 + Strain, 
+                      data = filter(data_subset, group == "A"))
+summary(equalslopes.mod)
+
+
+summary(aov(CFUlog10 ~ ODlog2 * Strain, 
+            data = filter(data_subset, group == "B")))
+
+#
+equalslopes.mod <- lm(CFUlog10 ~ ODlog2 + Strain, 
+                      data = filter(data_subset, group == "B"))
+summary(equalslopes.mod)
+
+
+# We then fit a linear model using log2(OD) and Strain to predict log10(CFU).
+# When allowing an interaction between Strain and log2(OD), the p-value for that
+# term was very large (~0.95) indicating no evidence that an
+# interaction was needed. A new model was fit that required equal slopes for the
+# regression line of each strain. The model was:
+
+# ftsZ2:  log10(CFU) = 7.09         + 0.34 * log2(OD)
+# ura3:      log10(CFU) = 7.09 + 0.334 + 0.34 * log2(OD)
+
+# Thus, the predicted log10(CFU) is 0.334 higher for URA3 than for ftsZ2
+# To convert this from a log10 scale, we need to raise 10 to the power of both
+# sides of the equation. That looks like this:
+
+# ftsZ2:  CFU = 10^7.09            * 10^(0.34 * log2(OD))
+# ura3:      CFU = 10^7.09 * 10^0.334 * 10^(0.34 * log2(OD))
+
+# This shows that the predicted CFU is 10^0.334 (or 2.159) times higher for ura3
+# than for ftsZ2. 
+
+# Model calculated similarly for cdrS vs ura3.
+
+```
 
 ### Aphidocholin microscopy analysis, Figure 3
 
@@ -211,19 +571,19 @@ data00 <- mutate(data00, Condition = "Time00")
 data06 <- mutate(data06, Condition = "Time06")
 data17 <- mutate(data17, Condition = "Time17")
 
-data_A <- union(data00, data06)
-data <- union(data_A, data17)
+data_A <- dplyr::union(data00, data06)
+data.aph <- dplyr::union(data_A, data17)
 
-data$Strain_ordered = factor(data$Strain, levels=c("ura3", "cdrS", "Scomp"))
-data$Condition_rev = factor(data$Condition, levels = c("Time17", "Time06", "Time00"))
+data.aph$Strain_ordered = factor(data.aph$Strain, levels=c("ura3", "cdrS", "Scomp"))
+data.aph$Condition_rev = factor(data.aph$Condition, levels = c("Time17", "Time06", "Time00"))
 group.colors <- c(ura3="#000000", cdrS="#2f738c", Scomp="#b8860b")
 ```
 
 
 #### Calculate geometric means of cell area
 ```{r}
-geomeans <- ddply(data, .(Condition, Strain), summarize, Area_micron.geomean = geoMean(Area_micron))
-data_new <- left_join(data, geomeans, by = c("Condition", "Strain"))
+geomeans <- ddply(data.aph, .(Condition, Strain), summarize, Area_micron.geomean = geoMean(Area_micron))
+data_new <- left_join(data.aph, geomeans, by = c("Condition", "Strain"))
 
 label_names <- c(
   Time00 = "Pre-aphidicolin",
@@ -263,74 +623,100 @@ ggplot(data_new, aes(x = Area_micron, fill = Condition, colour = Condition)) +
 
 #### Perform statistical tests to determine the significance of the difference between the means of each distribution
 
+
+```{r}
+# test for normality
+qqPlot(data.aph$Area_micron) # not normally distributed. Given the critical limit theorem, could use parametric tests because >200 observations for each strain. But distribution is so highly skewed that it's better to try with data transform.
+
+```
+
+
+##### decide on best transform
+```{r}
+aph.checknorm<-bestNormalize(data.aph$Area_micron) #check which transformation is best.
+aph.checknorm$chosen_transform #Ordered quantile normalization (OQN) is best normalization strategy
+aph.checknorm$norm_stats #look at the information about the distributions following each transform
+```
+
+#### Perform OQN on the length and area data
+```{r}
+aph.n<-orderNorm(data.aph$Area_micron)
+data.aph$oqn.area<-predict(aph.n)
+hist(data.aph$oqn.area, breaks = 20)
+# data forced to normal distribution.
+
+```
+
 ##### Run the test
 ```{r}
-#Can assume normally distrubuted means given the central limit theorem (sample sizes are large ~500), so can perform paramtric test.
 #design is 2x2 mixed 
 #IV between: Strain
 #IV within: Condition (time point)
-#DV: area (oqn quantile normalized data)
+#DV: area 
 
 #add sample ids to each treatment
-data$id <- 1:nrow(data)
+data$id <- 1:nrow(data.aph)
 
 #convert time dependent variable to a factor
-data$time<-as.factor(data$Condition)
+data.aph$time<-as.factor(data.aph$Condition)
 
 
-aov_strain_time <- aov(Area_micron ~ Strain*Condition + Error(Label/time), data=data)
+aov_strain_time <- aov(oqn.area ~ Strain*Condition + Error(Label/time), data=data.aph)
 summary(aov_strain_time) 
 
-#Results suggest that the strains are different (between group), that each strain is affected over time (within group), but that there is no interaction between the two groups. Suggests a simple main effect. Run the one-way test for each of Strain across time.
+#Results suggest that the strains are different (between group), that each strain is affected over time (within group), but that there is no interaction between the two groups. Suggests a simple main effect. Run post-hoc tests for each of Strain across time.
+```
+##### Post-hoc tests
+
+
+#### Pairwise Welch's test and effect size calculations on oqn-normalized hv and hm areas
+```{r}
+#subset area data
+data.aph.s<-filter(data.aph, Strain == "cdrS")
+data.aph.scomp<-filter(data.aph, Strain == "Scomp")
+data.aph.u<-filter(data.aph, Strain == "ura3")
+data.aph.t1<-filter (data.aph, Condition == "Time00")
+data.aph.t2<-filter (data.aph, Condition == "Time06")
+data.aph.t3<-filter (data.aph, Condition == "Time17")
+
+#perform tests on area data differences between time points for each strain
+pairwise.t.test(data.aph.s$oqn.area, data.aph.s$Condition, p.adjust.method = "BH", pool.sd = FALSE)
+pairwise.t.test(data.aph.scomp$oqn.area, data.aph.scomp$Condition, p.adjust.method = "BH", pool.sd = FALSE)
+pairwise.t.test(data.aph.u$oqn.area, data.aph.u$Condition, p.adjust.method = "BH", pool.sd = FALSE)
+
+#perfrom tests on area data differences between strains at each time point
+pairwise.t.test(data.aph.t1$oqn.area, data.aph$Strain, p.adjust.method = "BH", pool.sd = FALSE)
+pairwise.t.test(data.aph.t2$oqn.area, data.aph$Strain, p.adjust.method = "BH", pool.sd = FALSE)
+pairwise.t.test(data.aph.t3$oqn.area, data.aph$Strain, p.adjust.method = "BH", pool.sd = FALSE)
+
+
 ```
 
-##### Compare each strain to itself across time 
+##### Given the large n, calculate effect size of difference between mothers, then difference between daughters.
 ```{r}
-#IV (within): Condition (ie time)
-#DV: oqn (per strain)
-data.ura<-filter(data, Strain == "ura3")
-aov.time.ura <- aov(Area_micron ~ Condition + Error(Label/Condition), data = data.ura)
-summary(aov.time.ura)
+#put cell area data in format for effect size calc
+data.aph.u.t1 <-filter (data.aph.u, Condition == "Time00")
+data.aph.u.t2 <-filter (data.aph.u, Condition == "Time06")
+data.aph.u.t3 <-filter (data.aph.u, Condition == "Time17")
+data.aph.s.t1 <-filter (data.aph.s, Condition == "Time00")
+data.aph.s.t2 <-filter (data.aph.s, Condition == "Time06")
+data.aph.s.t3 <-filter (data.aph.s, Condition == "Time17")
+data.aph.scomp.t1 <-filter (data.aph.scomp, Condition == "Time00")
+data.aph.scomp.t2 <-filter (data.aph.scomp, Condition == "Time06")
+data.aph.scomp.t3 <-filter (data.aph.scomp, Condition == "Time17")
 
-#yes, ura3 cell area changes significantly in response to aphidocholin over time.
-```
+#calc effect size
+cohen.d(data.aph.u.t2$oqn.area, data.aph.u.t1$oqn.area, paired = FALSE)
+cohen.d(data.aph.u.t2$oqn.area, data.aph.u.t3$oqn.area, paired = FALSE)
 
-```{r}
-#IV (within): Condition (ie time)
-#DV: oqn (per strain)
-data.scomp<-filter(data, Strain == "Scomp")
-aov.time.scomp<- aov(Area_micron ~ Condition + Error(Label/Condition), data = data.scomp)
-summary(aov.time.scomp)
+cohen.d(data.aph.s.t2$oqn.area, data.aph.s.t1$oqn.area, paired = FALSE)
+cohen.d(data.aph.s.t2$oqn.area, data.aph.s.t3$oqn.area, paired = FALSE)
 
-#yes, Scomp cell area changes significantly in response to aphidocholin over time.
-```
+cohen.d(data.aph.scomp.t2$oqn.area, data.aph.scomp.t1$oqn.area, paired = FALSE)
+cohen.d(data.aph.scomp.t2$oqn.area, data.aph.scomp.t3$oqn.area, paired = FALSE)
 
-```{r}
-#IV (within): Condition (ie time)
-#DV: oqn (per strain)
-data.s<-filter(data, Strain == "cdrS")
-aov.time.s<- aov(Area_micron ~ Condition + Error(Label/Condition), data = data.s)
-summary(aov.time.s)
+cohen.d(data.aph.scomp.t1$oqn.area, data.aph.u.t1$oqn.area)
 
-#yes, cdrS cell area changes significantly in response to aphidocholin over time but depends on pval cutoff (ie if use p<0.01, this is not signif). Basically, cdrS changes much less dramatically than ura3 and Scomp over time.
-```
-
-##### Posthoc tests. compare each strain to itself between each time point.
-```{r}
-#Does ura3 change between time points?  
-t1 <- filter(data, Condition == 'Time00')
-t2 <- filter(data, Condition == 'Time06')
-t3 <- filter(data, Condition == "Time17")
-ura <- filter(data, Strain == 'ura3')
-scomp <- filter(data, Strain == 'Scomp')
-s <- filter(data, Strain == "cdrS")
-
-pairwise.wilcox.test(ura$Area_micron, ura$Condition, p.adj = "BH")
-pairwise.wilcox.test(scomp$Area_micron, scomp$Condition, p.adj = "BH")
-pairwise.wilcox.test(s$Area_micron, s$Condition, p.adj = "BH")
-
-#Also test for significance of the difference between the ura3 and complemented strain at the final time point.
-pairwise.wilcox.test(t3$Area_micron, t3$Strain, p.adj = "BH")
 ```
 
 ### Single cell time lapse imaging analysis, Figure 4
@@ -384,10 +770,18 @@ dev.off()
 #### Calculate stats for doubling time (text corresponding to fig 4A)
 ```{r}
 #calculate means and standard deviation of cell doubling time distributions for each strain
-td.stats <-ddply(td, .(strain), summarize, td.geo = geoMean(td), median = median(td), sd = sd(td), n.obs = length(td))
+td$td.rate <- 1/td$td
+
+td.stats <-ddply(td, .(strain), summarize, td.geo = geoMean(td), median = median(td), rate.geo = geoMean(td.rate), sd = sd(td), sd.rate = sd(td.rate), n.obs = length(td), se = sd(td)/sqrt(n.obs))
+
+
+
 
 td.stats
 
+```
+
+```{r}
 # statistical tests. 
 qqPlot(td$td) # not normally distributed, but given the critical limit theorem, can assume normality given that there are >40 observations for each strain.
 
@@ -420,7 +814,54 @@ abirth.stats <- ddply (abirth, .(strain), summarize, geomean = geoMean(abirth), 
 #very large division area for cdrS, with high standard deviation.
 ```
 
-#### Figure 4B &C
+#### Figure 4B 
+```{r}
+ura3ratio <- filter(divratio, strain == 'ura3')
+cdrSratio <- filter(divratio, strain == 'cdrS')
+
+ura3_dens <- density(ura3ratio$ratio, adjust = 0.5)
+ura3_dens <- data.frame(x = ura3_dens$x, y = ura3_dens$y)
+
+
+
+div_ura3 <- ggplot(ura3_dens, aes(x = x, y = 1, fill = y)) +
+  geom_tile() +
+  scale_fill_viridis() +
+  theme_classic() +
+  scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme(panel.background = element_rect(fill = 'black'), 
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank()) +
+  labs(y = NULL, x = NULL) +
+  NULL
+
+#iv_ura3
+
+cdrS_dens <- density(cdrSratio$ratio, adjust = 0.5)
+cdrS_dens <- data.frame(x = cdrS_dens$x, y = cdrS_dens$y)
+
+div_cdrS <- ggplot(cdrS_dens, aes(x = x, y = 1, fill = y)) +
+  geom_tile() +
+  scale_fill_viridis() +
+  theme_bw() +
+  scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme(panel.background = element_rect(fill = 'black'), 
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(), 
+        axis.title.x = element_text(size = 12),
+        axis.text.x = element_text(size = 10)) +
+  labs(y = NULL, x = 'Division ratio') +
+  NULL
+
+pdf("divratio-heatmap.pdf")
+div_ura3 / div_cdrS
+dev.off()
+
+```
+
+#### Figure 4C and D
 ```{r}
 #http://www.sthda.com/english/wiki/be-awesome-in-ggplot2-a-practical-guide-to-be-highly-effective-r-software-and-data-visualization
 
@@ -499,6 +940,7 @@ grid.draw(rbind(ggplotGrob(hist.d), ggplotGrob(adiv.ggdot), ggplotGrob(hist.b), 
 dev.off()
 ```
 
+
 #### Statistical comparisons, mother and daughter cell area
 ```{r}
 #put data in format usable by anova
@@ -563,7 +1005,7 @@ ratio.stats
 
 
 
-#### Plot the division ratio histogram and raw data (subpanel 4D)
+#### Plot the division ratio histogram and raw data (lower subpanel 4B)
 ```{r} 
 
 group.colors <- c(ura3="#000000", cdrS="#29AF7FFF")
@@ -643,10 +1085,9 @@ core_set <- filter(norm_tidy, Strain %in% c("cdrS", "ura3")) %>%
 
 ```
 
-#### Plot all the genes, Supplementary Figure 3
+#### Plot all the genes, Supplementary Figure 5A
 ```{r}
 
-# supp fig 3a
 group.colors <- c(ura3="#000000", cdrL="#7ed158", cdrS="#2f738c")
 
 growth_all <- filter(core_set, Category %in% c(1:4))
@@ -752,7 +1193,7 @@ write.table(cdr.sig.profiles, file = "sig.genes.masigpro.cdr.txt", sep = "\t")
 
 ```
 
-##### Plot the data for main text Figure 5A
+##### Plot the data for main text Figure 6A
 ```{r}
 #Fig 5A (genes significantly differentially expressed in ∆S across the growth time course )
 cdr.plot <- filter(growth_all, Gene %in% c("ftsZ1", "ftsZ2", "sojA", "ftsZ3"))
@@ -784,25 +1225,27 @@ dev.off()
 
 #### Aphidocholin differential gene expression analysis with maSigPro.
 
-##### plot the data to make Supplementary Figure 3B
+##### plot the data to make Supplementary Figure 5B
 ```{r}
 
 #Supplementary Figure 3b
 
 #subset the data to focus on aphidocholin treated samples
-aph <- filter(core_set, Category %in% c(5:6))
+aph.ns <- filter(core_set, Category %in% c(5:6))
 
-pdf("aphall.pdf", width = 5, height = 25)
 
-#boxplots with raw data points shown.
-ggplot(aph, aes(x=Strain, y=log.expr, color = Strain)) + 
+pdf("aphall.pdf", width = 5, height = 15)
+
+#dotplots with raw data points shown.
+ggplot(aph.ns, aes(x=Strain, y=log.expr, color = Strain)) + 
   geom_boxplot()+
   theme_bw() +
   facet_grid(Gene ~ Condition, scales = "free") +
-  geom_jitter(size = 2, alpha = 0.5, position=position_jitter(0.2)) +
+ geom_jitter(size = 2, alpha = 0.5, position=position_jitter(0.2)) +
 scale_color_manual(values = group.colors) +
   scale_fill_manual(values = group.colors) +
   labs(x = "strain", y = "Relative expression") 
+
 
 dev.off()
 ```
@@ -889,27 +1332,37 @@ write.table(cdr.sig.aph.profiles, file = "sig.genes.masigpro.cdr.aph.txt", sep =
 ```
 
 
-##### Make figure 5B
+##### Make figure 6B
 ```{r}
 #make data frame focusing on aphid data with z1, z2, and sojABE
 #Fig 5B
 group.colors <- c(ura3="#000000", cdrS="#2f738c")
 aph.z1z2soj <- filter(core_set, Condition %in% c("aphid", "release"), Gene %in% c("ftsZ1", "ftsZ2", "sojA", "sojB", "sojE")) %>%
-   droplevels()
+  droplevels()
 
-#boxplots with raw data points shown.
-pdf("fig5B.pdf", width = 7, height = 4)
-ggplot(aph.z1z2soj, aes(x=Strain, y=log.expr, color = Strain)) + 
-  #geom_dotplot(binaxis = "y")+
-  facet_grid(Condition ~ Gene) +
-  geom_dotplot(alpha = 0.5, position=position_jitter(0.2), binaxis = "y", stackdir= "center", binwidth = 0.1) +
+ 
+
+aph.z1z2soj$Strain <- factor(aph.z1z2soj$Strain, levels = c("ura3", "cdrS"))
+
+ 
+
+#plots with raw data points shown.
+pdf("fig5B.pdf", width = 4, height = 6)
+ggplot(aph.z1z2soj, aes(x= Condition, y=log.expr, color = Strain)) + 
+  geom_jitter(width = 0.2, alpha = 0.6) +
+  facet_grid(Gene ~ Strain) +
+  #geom_dotplot(alpha = 0.5, position=position_jitter(0.2), binaxis = "y", stackdir= "center", binwidth = 0.1) +
   stat_summary(fun.y = median, fun.ymin = median, fun.ymax = median,
-                 geom = "crossbar", width = 0.5,  fatten = 0.5) +
+               geom = "crossbar", width = 0.5,  fatten = 0.5) +
   theme_bw()+
   
-scale_color_manual(values = group.colors) +
+  scale_color_manual(values = group.colors) +
   scale_fill_manual(values = group.colors) +
-   labs(x = "strain", y = "Relative expression") 
+  labs(x = "strain", y = "Relative expression") 
+
+ 
+
+ 
 
 dev.off()
 ```
@@ -923,7 +1376,8 @@ See this helpful tutorial for additional ideas for using trackViewer: https://bi
 #### Import the files we will need to plot
 ```{r}
 
-#These bam files are too large to host on github. Please download them from the Sequence Read Archive, accession number XXXXX. 
+#These bam files are too large to host on github. Please generate them from the raw data at GEO accession number GSE148065 and the code on https://github.com/amyschmid/cdr. Files also available upon request.
+
 log.bam1<-importBam("0195FLAG1log_IP_sorted.bam")
 log.pks1 <- importScore("HBT-cdrL1-log-pks.bed", ranges = GRanges("NC_002607.1", IRanges(1,2e6)))
 
@@ -1079,3 +1533,260 @@ viewTracks(trackList,
 dev.off()
 
 ```
+
+### Function of CdrS in other halophiles (Figure 8)
+
+#### Read in the growth data 
+```{r}
+g <- read.delim ("OE_overnight-OD.txt")
+head(g)
+```
+#### calculate summary stats
+```{r}
+g.stats <- ddply(g, plasmid ~ species, summarize, mean = mean(OD), sd = sd(OD), nobs = length(OD), cv = sd(OD)/mean(OD), sem = sd(OD)/sqrt(nobs))
+g.stats
+```
+
+#### Plot the data (Figure 8B)
+```{r}
+#g$common.name_species <- paste (g$common.name, g$species, sep = "_")
+
+
+group.colors <- c(vector = "#000000", cdrS ="#287D8E")
+
+growth.plot <- ggplot(g, aes(x = common.name, y = OD,
+                     fill = common.name, color = common.name)) +
+  geom_dotplot(binaxis = 'y', 
+               stackdir = 'center',
+               dotsize = 5,
+               binwidth = 0.03,
+               alpha = 0.5) + 
+  theme_light() +  
+#  scale_fill_viridis_d(begin = 0, end = 0.75) +
+#  scale_color_viridis_d(begin = 0, end = 0.75) +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  scale_x_discrete(limits = rev(levels(as.factor(g$common.name)))) +
+  scale_y_continuous(limits = c(0, 4)) +
+  theme(panel.grid = element_blank(),
+        legend.position = 'none',
+        axis.text = element_text(size = 12),
+        strip.text = element_text(size = 12)) +
+  stat_summary(fun.y = median, 
+               fun.ymin = median,
+               fun.ymax = median,
+               geom = 'crossbar', width = 0.4, lwd = 0.2,
+               aes(group = common.name)) +
+  labs(y = "OD600", x = NULL) + 
+  
+  facet_wrap( ~ species)
+#  guides(fill = guide_legend(override.aes = list(size = 0.3))) +
+  NULL
+
+#Hvplot + coord_flip()
+
+
+
+ggsave("Figure_OE_growth.pdf", width = 5, height = 2, dpi = 600)
+#growth.plot
+```
+
+#### Read in the cell length and area data and format
+```{r}
+# first work with with data for Hfx volcanii (hv)
+celldata.hv <- read.csv('20170606_Hv_cell_stats.csv', header = TRUE)
+celldata.hv$Strain <- ordered(celldata.hv$Strain, levels = c('cdrS+', 'EV'))
+celldata.hv$Strain <- revalue(celldata.hv$Strain, c('EV'='empty_vector'))
+celldata.hv$Strain <- revalue(celldata.hv$Strain, c('cdrS+'='cdrS_overexpression'))
+
+celldata.hm <- read.csv('20170601_Hm_overexpression.csv', header = TRUE)
+celldata.hm$Strain <- ordered(celldata.hm$Strain, levels = c('cdrS+', 'EV'))
+celldata.hm$Strain <- revalue(celldata.hm$Strain, c('EV'='empty_vector'))
+celldata.hm$Strain <- revalue(celldata.hm$Strain, c('cdrS+'='cdrS_overexpression'))
+
+# then work with data for Hfx mediterranei (hm)
+```
+
+#### Generate dot plots of the cell area data for Hv (Figure 8D)
+```{r}
+group.colors <- c(empty_vector = "#000000", cdrS_overexpression ="#287D8E")
+
+Hvplot <- ggplot(celldata.hv, aes(x = Strain, y = Area_micron,
+                     fill = Strain, color = Strain)) +
+  geom_dotplot(binaxis = 'y', 
+               stackdir = 'center',
+               dotsize = 5,
+               binwidth = 0.05,
+               alpha = 0.4,
+               position = 'jitter') + 
+  theme_light() +  
+#  scale_fill_viridis_d(begin = 0, end = 0.75) +
+#  scale_color_viridis_d(begin = 0, end = 0.75) +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  scale_x_discrete(limits = rev(levels(as.factor(celldata.hv$Strain))),
+                   labels = c("vector", "cdrS+")) +
+  scale_y_continuous(limits = c(0, 150)) +
+  theme(panel.grid = element_blank(),
+        legend.position = 'none',
+        axis.text = element_text(size = 12),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank()) +
+  stat_summary(fun.y = median, 
+               fun.ymin = median,
+               fun.ymax = median,
+               geom = 'crossbar', width = 1, lwd = 0.1,
+               aes(group = Strain)) +
+  labs(y = expression(paste("Area (", mu, m^2, ")", sep = "")), x = NULL) +
+#  guides(fill = guide_legend(override.aes = list(size = 0.3))) +
+  NULL
+
+#Hvplot + coord_flip()
+
+
+
+#ggsave("Figure_Hv_OE.pdf", width = 4, height = 5, dpi = 600)
+
+```
+
+
+#### Generate dot plots of the cell area data for Hm (Figure 8F)
+```{r}
+Hmplot <- ggplot(celldata.hm, aes(x = Strain, y = Area_micron,
+                    fill = Strain, color = Strain)) +
+  geom_dotplot(binaxis = 'y', 
+               stackdir = 'center',
+               dotsize = 5,
+               binwidth = 0.05,
+               alpha = 0.4,
+               position = 'jitter') + 
+  theme_light() +  
+#  scale_fill_viridis_d(begin = 0, end = 0.75) +
+#  scale_color_viridis_d(begin = 0, end = 0.75) +
+  scale_color_manual(values = group.colors) +
+  scale_fill_manual(values = group.colors) +
+  scale_x_discrete(limits = rev(levels(as.factor(celldata.hm$Strain))),
+                   labels = c("vector", "cdrS+")) +
+  scale_y_continuous(limits = c(0,150)) + 
+  theme(panel.grid = element_blank(),
+        legend.position = 'none',
+        axis.text = element_text(size = 12)) +
+  stat_summary(fun.y = median, 
+               fun.ymin = median,
+               fun.ymax = median,
+               geom = 'crossbar', width = 1, lwd = 0.1,
+               aes(group = Strain)) +
+  labs(y = expression(paste("Area (", mu, m^2, ")", sep = "")), x = NULL) +
+#  guides(fill = guide_legend(override.aes = list(size = 0.3))) +
+  NULL
+
+#Hmplot + coord_flip()
+
+#ggsave("Figure_Hm_OE.pdf", width = 4, height = 5, dpi = 600)
+
+pdf("hfx_oe_area.pdf")
+grid.newpage()
+grid.draw(cbind(ggplotGrob(Hmplot), ggplotGrob(Hvplot), size = "last"))
+
+dev.off()
+```
+
+#### Calculate summary stats for Hv data (reported in main text)
+```{r}
+#summary stats
+hv.stats <- ddply(celldata.hv, .(Strain), summarize, geomean.area = geoMean(Area_micron), median.area = median(Area_micron), sd.area = sd(Area_micron), nobs.area = length(Area_micron), cv.area = sd(Area_micron)/geoMean(Area_micron), geomean.length = geoMean(Length_micron), median.length = median(Length_micron), sd.length = sd(Length_micron), nobs.length = length(Length_micron), cv.length = sd(Length_micron)/geoMean(Length_micron))
+
+#make the first part of table 2
+write.table (hv.stats, file = "hv.stats.txt", sep = "\t") 
+```
+
+#### Calculate summary stats for Hm data (reported in main text)
+```{r}
+hm.stats <- ddply(celldata.hm, .(Strain), summarize, geomean.area = geoMean(Area_micron), median.area = median(Area_micron), sd.area = sd(Area_micron), nobs.area = length(Area_micron), cv.area = sd(Area_micron)/geoMean(Area_micron), geomean.length = geoMean(Length_micron), median.length = median(Length_micron), sd.length = sd(Length_micron), nobs.length = length(Length_micron), cv.length = sd(Length_micron)/geoMean(Length_micron))
+
+#make the second part of table 2s
+write.table (hm.stats, file = "hm.stats.txt", sep = "\t")
+
+```
+
+#### Perform statistical tests: is cdrS overexpression strain significantly larger than vector control? 
+
+##### test for normality
+```{r}
+qqPlot (celldata.hm$Area_micron) #no, but it looks like non-normality it's driven by a few outliers.
+qqPlot (celldata.hv$Area_micron) #no, also a few outliers. 
+
+library(referenceIntervals)
+
+out.hm <- cook.outliers(celldata.hm$Area_micron)$outliers #use cook's distance to detect outliers
+i <- which(celldata.hm$Area_micron %in% out.hm)
+ggplot(celldata.hm[-i, ], aes(sample = Area_micron)) +
+  stat_qq() +
+  stat_qq_line()
+
+out.hv <- cook.outliers(celldata.hm$Area_micron)$outliers #use cook's distance to detect outliers
+i <- which(celldata.hv$Area_micron %in% out.hm)
+ggplot(celldata.hv[-i, ], aes(sample = Area_micron)) +
+  stat_qq() +
+  stat_qq_line()
+#still extremely skewed. need transform.
+```
+
+##### decide on best transform
+```{r}
+hm.checknorm<-bestNormalize(celldata.hm$Area_micron) #check which transformation is best.
+hm.checknorm$chosen_transform #Ordered quantile normalization (OQN) is best normalization strategy
+hm.checknorm$norm_stats #look at the information about the distributions following each transform
+
+
+hv.checknorm<-bestNormalize(celldata.hm$Area_micron) #check which transformation is best.
+hv.checknorm$chosen_transform #Ordered quantile normalization (OQN) is best normalization strategy
+hv.checknorm$norm_stats #look at the information about the distributions following each transform
+```
+
+#### Perform OQN on the hv and hm area data
+```{r}
+hv.area.n<-orderNorm(celldata.hv$Area_micron)
+celldata.hv$oqn.area<-predict(hv.area.n)
+hist(celldata.hv$oqn.area, breaks = 20)
+# data forced to normal distribution.
+
+hm.area.n<-orderNorm(celldata.hm$Area_micron)
+celldata.hm$oqn.area<-predict(hm.area.n)
+hist(celldata.hm$oqn.area, breaks = 20)
+# data forced to normal distribution.
+```
+
+#### Pairwise Welch's test and effect size calculations on oqn-normalized hv and hm areas
+```{r}
+celldata.hm.mt<-filter(celldata.hm, Strain == "empty_vector")
+celldata.hm.cdrs<-filter(celldata.hm, Strain == "cdrS_overexpression")
+t.test(celldata.hm.mt$oqn.area, celldata.hm.cdrs$oqn.area, p.adjust.method = "BH", pool.sd = FALSE)
+
+celldata.hv.mt<-filter(celldata.hv, Strain == "empty_vector")
+celldata.hv.cdrs<-filter(celldata.hv, Strain == "cdrS_overexpression")
+t.test(celldata.hv.mt$oqn.area, celldata.hv.cdrs$oqn.area, p.adjust.method = "BH", pool.sd = FALSE)
+#calculate effect size of difference between mothers, then difference between daughters.
+
+```
+
+##### Given the large n, calculate effect size of difference between mothers, then difference between daughters.
+```{r}
+#put celldata in format for effect size calc
+oqnarea.hm<- as.data.frame(cbind(celldata.hm.mt$oqn.area, celldata.hm.cdrs$oqn.area))
+colnames(oqnarea.hm) <- c("mt.oqnarea", "cdrs.oqnarea")
+
+#calc effect size
+cohen.d(oqnarea.hm$cdrs.oqnarea, oqnarea.hm$mt.oqnarea, paired = FALSE)
+
+
+#put celldata in format for effect size calc
+oqnarea.hv<- as.data.frame(cbind(celldata.hv.mt$oqn.area, celldata.hv.cdrs$oqn.area))
+colnames(oqnarea.hv) <- c("mt.oqnarea", "cdrs.oqnarea")
+
+#calc effect size
+cohen.d(oqnarea.hv$cdrs.oqnarea, oqnarea.hv$mt.oqnarea, paired = FALSE)
+
+```
+
+
