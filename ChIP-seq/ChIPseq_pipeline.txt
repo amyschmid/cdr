@@ -1,0 +1,6 @@
+#Quality controlfastqc –o ./output_dir *.fastq#Trim adapter sequencestrim_galore –o ./output_dir *.fastq#Build genomebowtie2-build NRC1.fna NRC1#Alignbowtie2 –x NRC1 –U WCE_trimmed.fq –S WCE.sam#Convert and indexsamtools view –bS WCE.sam > WCE.bamsamtools view –bS IP.sam > IP.bamsamtools sort WCE.bam –o WCE_sorted.bamsamtools sort IP.bam –o IP_sorted.bamsamtools index WCE_sorted.bam WCE_sorted.bam.baisamtools index IP_sorted.bam IP_sorted.bam.bai
+
+#To separate out specific chromosomes/plasmids
+samtools view -b IP_sorted.bam NC_002607.1 > IP_chr_sorted.bam
+samtools view -b WCE_sorted.bam NC_002607.1 > WCE_chr_sorted.bam#Generate wiggle file from bam
+samtools mpileup IP_sorted.bam | perl -ne 'BEGIN{print "track type=wiggle_0 name=IP description=IP\n"};($c, $start, undef, $depth) = split; if ($c ne $lastC) { print "variableStep chrom=$c\n"; };$lastC=$c;next unless $. % 1 ==0;print "$start\t$depth\n" unless $depth<3;' > IP.wig
