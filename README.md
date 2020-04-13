@@ -40,7 +40,7 @@ All data needed to run the code in the "2020-03-19-cdr-analysis-all.Rmd" file ar
      - Copy number variation is associated with gene expression change in archaea. Keely A. Dulmage, Cynthia L. Darnell, Angie Vreugdenhil, and Amy K. Schmid1 Microb Genom. 2018 Sep; 4(9): e000210. doi: 10.1099/mgen.0.000210
 
 - bam files for ChIP-seq visualization. 
-     - These can be generated using the code in the ChIP-seq folder or 
+     - These can be generated using the code in the ChIP-seq folder ("ChIP-seq_Hs_cdrL.ipynb") or 
      - Downloaded from the sequence read archive at GEO accession GSE148065.
 
 ## Instructions
