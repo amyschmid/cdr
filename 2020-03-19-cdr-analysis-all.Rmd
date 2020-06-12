@@ -1366,6 +1366,19 @@ ggplot(aph.z1z2soj, aes(x= Condition, y=log.expr, color = Strain)) +
 
 dev.off()
 ```
+##### Analyze the absolute number of mRNA molecules for ftsZ1 and ftsZ2 (main text description)
+```{r}
+#read in normalized counts file.
+ns.cts <-  read.csv ("nanostring-normcounts.csv") %>%
+ gather (gene, expression, VNG0194H:mrp) %>%
+ filter (Strain == c("ura3", "cdrS")) #%>%
+ #filter (gene == c("ftsZ1", "ftsZ2"))
+
+ns.cts.stats<- ddply(ns.cts, .(Strain, gene), summarize, mean = mean(expression), sd = sd(expression))
+
+write.table (ns.cts.stats, file = "ns.stats.txt", sep = "\t")
+
+```
 
 ### ChIP-seq visualization with trackViewer (Figure 7).
 See the ChIP-seq subfolder of this repository for ChIP-seq analysis code (read mapping, peak picking, and annotating peaks according to nearby genes).
@@ -1552,6 +1565,7 @@ g.stats
 #g$common.name_species <- paste (g$common.name, g$species, sep = "_")
 
 
+  
 group.colors <- c(vector = "#000000", cdrS ="#287D8E")
 
 growth.plot <- ggplot(g, aes(x = common.name, y = OD,
@@ -1579,7 +1593,8 @@ growth.plot <- ggplot(g, aes(x = common.name, y = OD,
                aes(group = common.name)) +
   labs(y = "OD600", x = NULL) + 
   
-  facet_wrap( ~ species)
+  facet_wrap( ~ species) 
+ 
 #  guides(fill = guide_legend(override.aes = list(size = 0.3))) +
   NULL
 
@@ -1587,7 +1602,7 @@ growth.plot <- ggplot(g, aes(x = common.name, y = OD,
 
 
 
-ggsave("Figure_OE_growth.pdf", width = 5, height = 2, dpi = 600)
+ggsave("Figure_OE_growth-rev.pdf", width = 5, height = 2, dpi = 600)
 #growth.plot
 ```
 
@@ -1607,7 +1622,7 @@ celldata.hm$Strain <- revalue(celldata.hm$Strain, c('cdrS+'='cdrS_overexpression
 # then work with data for Hfx mediterranei (hm)
 ```
 
-#### Generate dot plots of the cell area data for Hv (Figure 8D)
+#### Generate dot plots of the cell area data for Hv (Supplementary Figure 8)
 ```{r}
 group.colors <- c(empty_vector = "#000000", cdrS_overexpression ="#287D8E")
 
@@ -1650,7 +1665,7 @@ Hvplot <- ggplot(celldata.hv, aes(x = Strain, y = Area_micron,
 ```
 
 
-#### Generate dot plots of the cell area data for Hm (Figure 8F)
+#### Generate dot plots of the cell area data for Hm (Supplementary Figure 8)
 ```{r}
 Hmplot <- ggplot(celldata.hm, aes(x = Strain, y = Area_micron,
                     fill = Strain, color = Strain)) +

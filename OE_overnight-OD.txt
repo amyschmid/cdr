@@ -1,21 +1,27 @@
-common.name	plasmid	species	OD
-vector	pJAM202c	Hme	2.46
-vector	pJAM202c	Hme	2.47
-vector	pJAM202c	Hme	1.75
-vector	pJAM202c	Hme	1
-vector	pJAM202c	Hme	2.37
-cdrS	pAKS77	Hme	0.358
-cdrS	pAKS77	Hme	0.342
-cdrS	pAKS77	Hme	0.019
-cdrS	pAKS77	Hme	0.35
-cdrS	pAKS77	Hme	0.027
-vector	pJAM202c	Hvo	2.91
-vector	pJAM202c	Hvo	3.5
-vector	pJAM202c	Hvo	3.39
-vector	pJAM202c	Hvo	3.9
-vector	pJAM202c	Hvo	3.93
-cdrS	pAKS78	Hvo	0.387
-cdrS	pAKS78	Hvo	0.678
-cdrS	pAKS78	Hvo	0.36
-cdrS	pAKS78	Hvo	0.679
-cdrS	pAKS78	Hvo	0.698
+plasmid	OD	abbr	culturetime.approx	species	common.name
+pJAM202c	2.46	Hme	16	Hfx. mediterranei	vector
+pJAM202c	2.47	Hme	16	Hfx. mediterranei	vector
+pJAM202c	1.75	Hme	16	Hfx. mediterranei	vector
+pJAM202c	1	Hme	16	Hfx. mediterranei	vector
+pJAM202c	2.37	Hme	16	Hfx. mediterranei	vector
+pAKS77	0.358	Hme	16	Hfx. mediterranei	cdrS
+pAKS77	0.342	Hme	16	Hfx. mediterranei	cdrS
+pAKS77	0.019	Hme	16	Hfx. mediterranei	cdrS
+pAKS77	0.35	Hme	16	Hfx. mediterranei	cdrS
+pAKS77	0.027	Hme	16	Hfx. mediterranei	cdrS
+pJAM202c	2.91	Hvo	16	Hfx. volcanii	vector
+pJAM202c	3.5	Hvo	16	Hfx. volcanii	vector
+pJAM202c	3.39	Hvo	16	Hfx. volcanii	vector
+pJAM202c	3.9	Hvo	16	Hfx. volcanii	vector
+pJAM202c	3.93	Hvo	16	Hfx. volcanii	vector
+pAKS78	0.387	Hvo	16	Hfx. volcanii	cdrS
+pAKS78	0.678	Hvo	16	Hfx. volcanii	cdrS
+pAKS78	0.36	Hvo	16	Hfx. volcanii	cdrS
+pAKS78	0.679	Hvo	16	Hfx. volcanii	cdrS
+pAKS78	0.698	Hvo	16	Hfx. volcanii	cdrS
+pMTFChis	1.77	Hbt	72	Hbt. salinarum	vector
+pMTFChis	1.48	Hbt	72	Hbt. salinarum	vector
+pMTFChis	1.75	Hbt	72	Hbt. salinarum	vector
+0194chis	0.368	Hbt	72	Hbt. salinarum	cdrS
+0194chis	0.261	Hbt	72	Hbt. salinarum	cdrS
+0194chis	0.278	Hbt	72	Hbt. salinarum	cdrS
