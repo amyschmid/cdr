@@ -235,7 +235,7 @@ CIr(r = -0.1583029, n = 58, level = 0.95)
 ```
 
 
-### Bulk culture microscopy and growth analysis, Figure 2
+### Bulk culture microscopy and growth analysis, Figure 3
 
 #### Read in the data and format appropriately
 ```{r}
@@ -274,7 +274,7 @@ data.ar$Growth_phase <- factor(data.ar$Growth_phase, levels = c('earlylog', 'mid
 
 ```
 
-#### Make the plot for Supplementary Figure 2
+#### Make the plot for Supplementary Figure 3
 ```{r}
 group.colors <- c(ura3="#000000", cdrS="#2f738c", ftsZ2="#441152")
 
@@ -305,7 +305,7 @@ ggplot(data.len) +
 ggsave('cell_length_all.pdf', height = 5, width = 7, dpi = 600)
 ```
 
-#### Make the plot for Figure 2A
+#### Make the plot for Figure 3A
 ```{r}
 ### set up geomeans for early log plot
 ura3_geomean <- aggregate(Length ~ Growth_phase, 
@@ -443,7 +443,7 @@ cohen.d(oqnar$ftsz2, oqnar$ura3, paired = FALSE)
 
 ```
 
-#### Make the plot for Figure 2B
+#### Make the plot for Figure 3B
 ```{r}
 
 ggplot(growth)+
@@ -480,7 +480,7 @@ cor.test(ftsZ2_data$CFUlog10, ftsZ2_data$ODlog2)
 ```
 
 
-#### Make plot, figure 2C
+#### Make plot, figure 3C
 ```{r}
 #this plot shows the independent correlations for each strain
 
@@ -558,7 +558,7 @@ summary(equalslopes.mod)
 
 ```
 
-### Aphidocholin microscopy analysis, Figure 3
+### Aphidocholin microscopy analysis, Figure 4
 
 #### Read in the data and get it ready for plotting
 ```{r}
@@ -596,7 +596,7 @@ write.table (geomeans, file = "aph.geomeans.txt", sep= "\t")
 ```
 
 
-#### Plot - Figure 3
+#### Plot - Figure 4
 ```{r}
 
 ggplot(data_new, aes(x = Area_micron, fill = Condition, colour = Condition)) +
@@ -655,7 +655,7 @@ hist(data.aph$oqn.area, breaks = 20)
 #DV: area 
 
 #add sample ids to each treatment
-data$id <- 1:nrow(data.aph)
+#data$id <- 1:nrow(data.aph)
 
 #convert time dependent variable to a factor
 data.aph$time<-as.factor(data.aph$Condition)
@@ -708,18 +708,20 @@ data.aph.scomp.t3 <-filter (data.aph.scomp, Condition == "Time17")
 #calc effect size
 cohen.d(data.aph.u.t2$oqn.area, data.aph.u.t1$oqn.area, paired = FALSE)
 cohen.d(data.aph.u.t2$oqn.area, data.aph.u.t3$oqn.area, paired = FALSE)
+cohen.d(data.aph.u.t1$oqn.area, data.aph.u.t3$oqn.area, paired = FALSE)
 
 cohen.d(data.aph.s.t2$oqn.area, data.aph.s.t1$oqn.area, paired = FALSE)
 cohen.d(data.aph.s.t2$oqn.area, data.aph.s.t3$oqn.area, paired = FALSE)
 
 cohen.d(data.aph.scomp.t2$oqn.area, data.aph.scomp.t1$oqn.area, paired = FALSE)
 cohen.d(data.aph.scomp.t2$oqn.area, data.aph.scomp.t3$oqn.area, paired = FALSE)
+cohen.d(data.aph.scomp.t1$oqn.area, data.aph.scomp.t3$oqn.area, paired = FALSE)
 
 cohen.d(data.aph.scomp.t1$oqn.area, data.aph.u.t1$oqn.area)
 
 ```
 
-### Single cell time lapse imaging analysis, Figure 4
+### Single cell time lapse imaging analysis, Figure 5
 
 #### Read in the data and put into format useful for plotting and stats
 ```{r}
@@ -749,7 +751,7 @@ group.colors <- c(ura3="#000000", cdrS="#29AF7FFF", cdrL="#FDE725FF", ftsZ2="#45
 
 
 
-#### Calculate cell area doubling time and plot distributions (Figure 4A)
+#### Calculate cell area doubling time and plot distributions (Figure 5A)
 ```{r}
 
 
@@ -767,7 +769,7 @@ ggplot(data = td, aes(x = td, stat(density), color = strain)) +
 dev.off()
 ```
 
-#### Calculate stats for doubling time (text corresponding to fig 4A)
+#### Calculate stats for doubling time (text corresponding to figure 5A)
 ```{r}
 #calculate means and standard deviation of cell doubling time distributions for each strain
 td$td.rate <- 1/td$td
@@ -814,7 +816,7 @@ abirth.stats <- ddply (abirth, .(strain), summarize, geomean = geoMean(abirth), 
 #very large division area for cdrS, with high standard deviation.
 ```
 
-#### Figure 4B 
+#### Figure 5B 
 ```{r}
 ura3ratio <- filter(divratio, strain == 'ura3')
 cdrSratio <- filter(divratio, strain == 'cdrS')
@@ -861,7 +863,7 @@ dev.off()
 
 ```
 
-#### Figure 4C and D
+#### Figure 5C and D
 ```{r}
 #http://www.sthda.com/english/wiki/be-awesome-in-ggplot2-a-practical-guide-to-be-highly-effective-r-software-and-data-visualization
 
@@ -1005,7 +1007,7 @@ ratio.stats
 
 
 
-#### Plot the division ratio histogram and raw data (lower subpanel 4B)
+#### Plot the division ratio histogram and raw data (lower subpanel 5B)
 ```{r} 
 
 group.colors <- c(ura3="#000000", cdrS="#29AF7FFF")
@@ -1055,7 +1057,7 @@ dev.off()
 #ratio_plot
 ```
 
-### Nanostring gene expression analysis, Figure 6
+### Nanostring gene expression analysis, Figure 7
 
 #### Load the Nanostring count data and normalize it to expression in NRC-1 control strain
 ```{r}
@@ -1085,7 +1087,7 @@ core_set <- filter(norm_tidy, Strain %in% c("cdrS", "ura3")) %>%
 
 ```
 
-#### Plot all the genes, Supplementary Figure 5A
+#### Plot all the genes, Supplementary Figure 7A
 ```{r}
 
 group.colors <- c(ura3="#000000", cdrL="#7ed158", cdrS="#2f738c")
@@ -1193,14 +1195,14 @@ write.table(cdr.sig.profiles, file = "sig.genes.masigpro.cdr.txt", sep = "\t")
 
 ```
 
-##### Plot the data for main text Figure 6A
+##### Plot the data for main text Figure 7A
 ```{r}
 #Fig 5A (genes significantly differentially expressed in ∆S across the growth time course )
 cdr.plot <- filter(growth_all, Gene %in% c("ftsZ1", "ftsZ2", "sojA", "ftsZ3"))
 #cdr.sig.plot2 <- filter(growth_all, Gene %in% c("ftsZ3"))
 group.colors <- c(ura3="#000000", cdrS="#2f738c")
 
-pdf("fig5A.pdf" , width = 4, height = 4)
+pdf("fig7A.pdf" , width = 4, height = 4)
 ggplot(cdr.plot) +
   geom_point(aes(x = Category, y = log.expr, color = Strain), 
               size = 1, alpha = 0.5) +
@@ -1225,10 +1227,10 @@ dev.off()
 
 #### Aphidocholin differential gene expression analysis with maSigPro.
 
-##### plot the data to make Supplementary Figure 5B
+##### plot the data to make Supplementary Figure 7B
 ```{r}
 
-#Supplementary Figure 3b
+#Supplementary Figure 2b
 
 #subset the data to focus on aphidocholin treated samples
 aph.ns <- filter(core_set, Category %in% c(5:6))
@@ -1313,7 +1315,7 @@ sigs.aph <- get.siggenes(tstep.aph, rsq = 0.7, vars = "groups") #chose this cuto
 ```
 ##### Write output files for supplementary table 7
 ```{r}
-#save the list of genes differentially expressed in response to growth in the parent strain. Also make data frame for plotting for figure. The facet wrap labels for these 10 signif genes were highlighted manually in Supplementary Fig 3A.
+#save the list of genes differentially expressed in response to growth in the parent strain. Also make data frame for plotting for figure. The facet wrap labels for these 10 signif genes were highlighted manually in Supplementary Fig 7A.
 ura3.sig.aph<-sigs.aph$sig.genes$ura3
 ura3.sig.aph.profiles<-ura3.sig.aph$sig.profiles
 ura3.sig.aph.pvals<-ura3.sig.aph$sig.pvalues
@@ -1332,10 +1334,10 @@ write.table(cdr.sig.aph.profiles, file = "sig.genes.masigpro.cdr.aph.txt", sep =
 ```
 
 
-##### Make figure 6B
+##### Make figure 7B
 ```{r}
 #make data frame focusing on aphid data with z1, z2, and sojABE
-#Fig 5B
+#Fig 2B
 group.colors <- c(ura3="#000000", cdrS="#2f738c")
 aph.z1z2soj <- filter(core_set, Condition %in% c("aphid", "release"), Gene %in% c("ftsZ1", "ftsZ2", "sojA", "sojB", "sojE")) %>%
   droplevels()
@@ -1380,7 +1382,7 @@ write.table (ns.cts.stats, file = "ns.stats.txt", sep = "\t")
 
 ```
 
-### ChIP-seq visualization with trackViewer (Figure 7).
+### ChIP-seq visualization with trackViewer (Figure 2).
 See the ChIP-seq subfolder of this repository for ChIP-seq analysis code (read mapping, peak picking, and annotating peaks according to nearby genes).
 
 See this helpful tutorial for additional ideas for using trackViewer: https://bioconductor.org/packages/release/bioc/vignettes/trackViewer/.
@@ -1429,10 +1431,10 @@ rtracklayer::export(some.genes, "hbt-genes.bed", format = "bed")
 ```
 
 
-#### make the plot, supplementary Figure S5A
+#### make the plot, supplementary Figure S2A
 ```{r}
 #Show peaks detected across the chromosome in all replicates and phases of growth.
-pdf("SF5A.pdf")
+pdf("SF2A.pdf")
 viewerStyle <- trackViewerStyle()
 setTrackViewerStyleParam(viewerStyle, "margin", c(.1, .05, .02, .02))
 vp <- viewTracks(trackList (log.pks1, log.pks3, stat.pks1, stat.pks3), 
@@ -1443,7 +1445,7 @@ vp <- viewTracks(trackList (log.pks1, log.pks3, stat.pks1, stat.pks3),
 dev.off()
 ```
 
-#### Make the plot ready for main text, Figure 7
+#### Make the plot ready for main text, Figure 2
 ```{r}
 #make new tracks that allow overplotting
 log<-log.pks1
@@ -1495,7 +1497,7 @@ dev.off()
 
 
 
-#### Make the plots for supplementary Figure S5B
+#### Make the plots for supplementary Figure S2B
 ```{r}
 #make new tracks that allow overplotting
 log3<-log.pks3
@@ -1593,7 +1595,8 @@ growth.plot <- ggplot(g, aes(x = common.name, y = OD,
                aes(group = common.name)) +
   labs(y = "OD600", x = NULL) + 
   
-  facet_wrap( ~ species) 
+  facet_wrap (~species ) 
+  
  
 #  guides(fill = guide_legend(override.aes = list(size = 0.3))) +
   NULL
